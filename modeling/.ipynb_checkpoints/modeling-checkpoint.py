@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from sub_module import HiddenLayer
+from sub_module import Blocks
 
 import sys
 sys.path.append('..')
@@ -9,24 +9,53 @@ from config import Config
 
 conf = Config()
 
+# Same Padding
+def fixed_padding(inputs, kernel_size):
+    kernel_size_effective = kernel_size + (kernel_size - 1)
+    pad_total = kernel_size_effective - 1
+    pad_beg = pad_total // 2
+    pad_end = pad_total - pad_beg
+    padded_inputs = F.pad(inputs, (pad_beg, pad_end, pad_beg, pad_end))
+    return padded_inputs
+
 class Modeling(nn.Module):
     # 重みの定義などを行う。
-    def __init__(self, c_in=conf.input_channel, c_out=conf.output_channel, c_hidden=conf.hidden_channel, hidden_layer=conf.hidden_layer):
+    def __init__(self, c_in=conf.input_channel, c_out=conf.output_channel, c_hidden=conf.hidden_channel, hidden_layer=conf.hidden_layer, kernel_size=3):
         super(Modeling, self).__init__()
+        self.kernel_size = kernel_size
         
-        self.fc_in = nn.Linear(c_in, c_hidden)
-        self.hidden_module = HiddenLayer(c_hidden, hidden_layer)
-        self.fc = nn.Linear(c_hidden, c_out)
+        # Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros')
+        self.fc_in = nn.Conv2d(c_in, c_hidden, kernel_size, stride=2)
+        
+        # sub_module.Blocks()
+        self.blocks = Blocks(c_hidden, kernel_size, hidden_layer)
+        
+        # Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros')
+        self.conv_out = nn.Conv2d(c_hidden, c_hidden*2, kernel_size, stride=2)
+        
+        self.fc = nn.Linear(c_hidden*2, c_out)
         self.relu = nn.ReLU()
-        self.softmax = nn.Softmax(dim=0)
+        self.softmax = nn.Softmax(dim=1)
         self._init_weight()
     
     # モデルに入力xを与えたときに自動的に呼ばれる。出力を返す。
     def forward(self, x):
+        # entry block
+        x = fixed_padding(x, self.kernel_size)
         x = self.fc_in(x)
         x = self.relu(x)
-        x = self.hidden_module(x)
-        x = self.fc(x)
+        
+        # sub_module.Blocks()
+        x = self.blocks(x)
+        
+        # end block
+        x = fixed_padding(x, self.kernel_size)
+        x = self.conv_out(x)
+        x = self.relu(x)
+        
+        # Global Average Pooling
+        x = F.adaptive_avg_pool2d(x, (1, 1))
+        x = self.fc(x.reshape((x.shape[0], x.shape[1])))
         return self.softmax(x)
     
     # 重みの初期化を行う。
