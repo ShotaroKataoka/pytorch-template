@@ -189,8 +189,8 @@ def main():
                         metavar='N', help='input batch size for \
                                 testing (default: auto)')
     # optimizer params
-    parser.add_argument('--lr', type=float, default=0.001, metavar='LR',
-                        help='learning rate (default: auto)')
+    parser.add_argument('--lr', type=float, default=1e-6, metavar='LR',
+                        help='learning rate (default: 1e-6)')
     parser.add_argument('--weight-decay', type=float, default=5e-4,
                         metavar='M', help='w-decay (default: 5e-4)')
     # cuda, seed and logging
