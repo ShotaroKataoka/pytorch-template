@@ -9,8 +9,3 @@ class Config(object):
     num_class = 5
     hidden_channel = 128
     hidden_layer = 3
-    
-    # training setting
-    batch_size = 5 # dataloader.__init__.make_data_loader
-    epoch = 2
-    
