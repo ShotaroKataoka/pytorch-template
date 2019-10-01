@@ -113,8 +113,8 @@ class Trainer(object):
             self.writer.add_scalar('train/total_loss_iter', loss.item(), i + num_img_tr * epoch)
 
         self.writer.add_scalar('train/total_loss_epoch', train_loss, epoch)
-        print('numImages: %5d' % (i * self.args.batch_size + image.data.shape[0]))
-        print('Loss: %.3f' % train_loss)
+        print('Size of train set: %5d' % (i * self.args.batch_size + image.data.shape[0]))
+        print('Total train loss: %.3f' % (train_loss / (i + 1)))
 
         if self.args.no_val:
             # save checkpoint every epoch
@@ -155,9 +155,9 @@ class Trainer(object):
         self.writer.add_scalar('val/total_loss_epoch', test_loss, epoch)
         self.writer.add_scalar('val/Acc', Acc, epoch)
         self.writer.add_scalar('val/Acc_class', Acc_class, epoch)
-        print('numImages: %5d' % (i * self.args.batch_size + image.data.shape[0]))
+        print('Size of validation set: %5d' % (i * self.args.batch_size + image.data.shape[0]))
         print("Acc:{}, Acc_class:{}".format(Acc, Acc_class))
-        print('Loss: %.3f' % test_loss)
+        print('Total validation loss: %.3f' % (test_loss / (i + 1)))
         print('---------------------')
 
         new_pred = Acc_class
