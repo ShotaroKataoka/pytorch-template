@@ -5,7 +5,7 @@ from tqdm import trange
 import os
 from pycocotools import mask
 from torchvision import transforms
-import custom_transforms as tr
+import dataloader.custom_transforms as tr
 from PIL import Image, ImageFile
 from glob import glob
 from sklearn.utils import shuffle

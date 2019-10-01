@@ -1,6 +1,6 @@
 from torch.utils.data import DataLoader
 
-from dataloaders.dataset import Dataset
+from dataloader.dataset import Dataset
 import sys
 sys.path.append('..')
 from config import Config

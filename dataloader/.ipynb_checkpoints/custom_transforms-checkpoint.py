@@ -34,16 +34,15 @@ class ToTensor(object):
         # swap color axis because
         # numpy image: H x W x C
         # torch image: C X H X W
-        img = sample['image']
-        mask = sample['label']
-        img = np.array(img).astype(np.float32).transpose((2, 0, 1))
-        mask = np.array(mask).astype(np.float32)
+        img = np.array(sample['image'])
+        target = np.array(sample['label'])
+        img = img.astype(np.float32).transpose((2, 0, 1))
 
         img = torch.from_numpy(img).float()
-        mask = torch.from_numpy(mask).float()
+        target = torch.from_numpy(target).long()
 
         return {'image': img,
-                'label': mask}
+                'label': target}
 
 
 class RandomHorizontalFlip(object):

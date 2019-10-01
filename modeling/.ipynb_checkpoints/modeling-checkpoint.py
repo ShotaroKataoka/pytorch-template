@@ -1,13 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from sub_module import Blocks
+from modeling.sub_module import Blocks
 
-import sys
-sys.path.append('..')
 from config import Config
-
 conf = Config()
+
 
 # Same Padding
 def fixed_padding(inputs, kernel_size):
@@ -20,7 +18,7 @@ def fixed_padding(inputs, kernel_size):
 
 class Modeling(nn.Module):
     # 重みの定義などを行う。
-    def __init__(self, c_in=conf.input_channel, c_out=conf.output_channel, c_hidden=conf.hidden_channel, hidden_layer=conf.hidden_layer, kernel_size=3):
+    def __init__(self, c_in=conf.input_channel, c_out=conf.num_class, c_hidden=conf.hidden_channel, hidden_layer=conf.hidden_layer, kernel_size=3):
         super(Modeling, self).__init__()
         self.kernel_size = kernel_size
         

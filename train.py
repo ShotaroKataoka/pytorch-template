@@ -4,17 +4,32 @@ import numpy as np
 from tqdm import tqdm
 import torch
 import torch.nn as nn
-import torch.nn.F as F
+import torch.nn.functional as F
 
 from config import Config
 from dataloader import make_data_loader
-from modeling.sync_batchnorm.replicate import patch_replication_callback
 from utils.saver import Saver
 from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
+from config import Config
+conf = Config()
 
 # (****Change****)
 from modeling.modeling import Modeling
+
+class pycolor:
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    PURPLE = '\033[35m'
+    CYAN = '\033[36m'
+    WHITE = '\033[37m'
+    END = '\033[0m'
+    BOLD = '\038[1m'
+    UNDERLINE = '\033[4m'
+    INVISIBLE = '\033[08m'
+    REVERCE = '\033[07m'
 
 class Trainer(object):
     def __init__(self, args):
@@ -34,7 +49,7 @@ class Trainer(object):
         
         # Define network (****Change****)
         model = Modeling(c_in=conf.input_channel,
-                         c_out=conf.output_channel,
+                         c_out=conf.num_class,
                          c_hidden=conf.hidden_channel,
                          hidden_layer=conf.hidden_layer,
                          kernel_size=3)
@@ -45,7 +60,7 @@ class Trainer(object):
                                      weight_decay=args.weight_decay)
 
         # Define Criterion
-        self.criterion = nn.CrossEntropyLoss(reduce=False)
+        self.criterion = nn.CrossEntropyLoss(reduction="none")
         self.model, self.optimizer = model, optimizer
         
         # Define Evaluator
@@ -54,7 +69,6 @@ class Trainer(object):
         # Using cuda
         if args.cuda:
             self.model = torch.nn.DataParallel(self.model, device_ids=self.args.gpu_ids)
-            patch_replication_callback(self.model)
             self.model = self.model.cuda()
 
         # Resuming checkpoint
@@ -83,26 +97,23 @@ class Trainer(object):
         self.model.train()
         tbar = tqdm(self.train_loader)
         num_img_tr = len(self.train_loader)
+        print(pycolor.GREEN + "[Epoch: %d]" % (epoch) + pycolor.END)
+        print(pycolor.YELLOW+"Training:"+pycolor.END)
         for i, sample in enumerate(tbar):
             image, target = sample['image'], sample['label']
             if self.args.cuda:
                 image, target = image.cuda(), target.cuda()
             self.optimizer.zero_grad()
             output = self.model(image)
-            loss = self.criterion(output, target)
+            loss = self.criterion(output, target).sum()
             loss.backward()
             self.optimizer.step()
-            train_loss += loss.item()
+            train_loss += loss.sum().item()
             tbar.set_description('Train loss: %.3f' % (train_loss / (i + 1)))
             self.writer.add_scalar('train/total_loss_iter', loss.item(), i + num_img_tr * epoch)
 
-            # Show 10 * 3 inference results each epoch
-            if i % (num_img_tr // 10) == 0:
-                global_step = i + num_img_tr * epoch
-                self.summary.visualize_image(self.writer, self.args.dataset, image, target, output, global_step)
-
         self.writer.add_scalar('train/total_loss_epoch', train_loss, epoch)
-        print('[Epoch: %d, numImages: %5d]' % (epoch, i * self.args.batch_size + image.data.shape[0]))
+        print('numImages: %5d' % (i * self.args.batch_size + image.data.shape[0]))
         print('Loss: %.3f' % train_loss)
 
         if self.args.no_val:
@@ -120,6 +131,8 @@ class Trainer(object):
         self.model.eval()
         self.evaluator.reset()
         tbar = tqdm(self.val_loader, desc='\r')
+        print()
+        print(pycolor.YELLOW+"Validation:"+pycolor.END)
         test_loss = 0.0
         for i, sample in enumerate(tbar):
             image, target = sample['image'], sample['label']
@@ -128,8 +141,8 @@ class Trainer(object):
             with torch.no_grad():
                 output = self.model(image)
             loss = self.criterion(output, target)
-            test_loss += loss.item()
-            tbar.set_description('Test loss: %.3f' % (test_loss / (i + 1)))
+            test_loss += loss.sum().item()
+            tbar.set_description('Validation loss: %.3f' % (test_loss / (i + 1)))
             pred = output.data.cpu().numpy()
             target = target.cpu().numpy()
             pred = np.argmax(pred, axis=1)
@@ -137,17 +150,17 @@ class Trainer(object):
             self.evaluator.add_batch(target, pred)
 
         # Fast test during the training
-        Acc = self.evaluator.Pixel_Accuracy()
-        Acc_class = self.evaluator.Pixel_Accuracy_Class()
+        Acc = self.evaluator.Accuracy()
+        Acc_class = self.evaluator.Accuracy_Class()
         self.writer.add_scalar('val/total_loss_epoch', test_loss, epoch)
         self.writer.add_scalar('val/Acc', Acc, epoch)
         self.writer.add_scalar('val/Acc_class', Acc_class, epoch)
-        print('Validation:')
-        print('[Epoch: %d, numImages: %5d]' % (epoch, i * self.args.batch_size + image.data.shape[0]))
-        print("Acc:{}, Acc_class:{}: {}".format(Acc, Acc_class))
+        print('numImages: %5d' % (i * self.args.batch_size + image.data.shape[0]))
+        print("Acc:{}, Acc_class:{}".format(Acc, Acc_class))
         print('Loss: %.3f' % test_loss)
+        print('---------------------')
 
-        new_pred = mIoU
+        new_pred = Acc_class
         if new_pred > self.best_pred:
             is_best = True
             self.best_pred = new_pred
