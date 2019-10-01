@@ -11,29 +11,39 @@ from glob import glob
 from sklearn.utils import shuffle
 import pandas as pd
 
+import sys
+sys.path.append('..')
+from config import Config
+
+conf = Config()
+
 class Dataset():
-    def __init__(self, base_dir="../sample_data/", split="train", split_rate=0.7):
-        # read label.csv
-        label_path = base_dir + "label.csv"
+    NUM_CLASSES = conf.num_class
+    
+    def __init__(self, split="train"):
+        # Read label.csv
+        label_path = conf.dataset_dir + "label.csv"
         y = pd.read_csv(label_path)["label"].values
         ids = pd.read_csv(label_path)["id"].values
         
-        # get image path
+        # Get image path
         img_path = []
         for id in ids:
-            img_path += [base_dir+"{}.png".format(id)]
+            img_path += [conf.dataset_dir+"{}.png".format(id)]
         img_path = np.array(img_path)
         
-        # shuffle data
+        # Shuffle data
         img_path, y = shuffle(img_path, y, random_state=0)
         
         # train_len -> split data to train and validation
-        train_len = int(img_path.shape[0] * split_rate)
+        train_len = int(img_path.shape[0] * conf.split_rate)
 
         if split=="train":
             self.img_path, self.y = img_path[:train_len], y[:train_len]
-        else:
+        elif split=="val":
             self.img_path, self.y = img_path[train_len:], y[train_len:]
+        elif split=="test":
+            self.img_path, self.y = None, None
         self.split = split
 
     def __getitem__(self, index):
