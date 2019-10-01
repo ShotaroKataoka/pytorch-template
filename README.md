@@ -10,3 +10,4 @@ pytorchプロジェクトを簡単に開発するためのテンプレート。
 ### 学習実行方法
 ./pytorch-template/で `python train.py --batch_size=2`  
 
+# Version alpha-0.0.1
