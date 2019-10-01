@@ -6,6 +6,6 @@ class Config(object):
     
     # model setting
     input_channel = 3
-    num_class = 5
+    num_class = 2
     hidden_channel = 128
-    hidden_layer = 3
+    hidden_layer = 4

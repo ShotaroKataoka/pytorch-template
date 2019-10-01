@@ -1,20 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from modeling.sub_module import Blocks
+from modeling.sub_module import Blocks, PoolBlock
 
 from config import Config
 conf = Config()
-
-
-# Same Padding
-def fixed_padding(inputs, kernel_size):
-    kernel_size_effective = kernel_size + (kernel_size - 1)
-    pad_total = kernel_size_effective - 1
-    pad_beg = pad_total // 2
-    pad_end = pad_total - pad_beg
-    padded_inputs = F.pad(inputs, (pad_beg, pad_end, pad_beg, pad_end))
-    return padded_inputs
 
 class Modeling(nn.Module):
     # 重みの定義などを行う。
@@ -22,14 +12,13 @@ class Modeling(nn.Module):
         super(Modeling, self).__init__()
         self.kernel_size = kernel_size
         
-        # Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros')
-        self.fc_in = nn.Conv2d(c_in, c_hidden, kernel_size, stride=2)
+        # sub_module.PoolBlock()
+        self.conv_pool1 = PoolBlock(c_in, kernel_size, is_first=True)
+        self.conv_pool2 = PoolBlock(c_hidden, kernel_size)
         
         # sub_module.Blocks()
-        self.blocks = Blocks(c_hidden, kernel_size, hidden_layer)
-        
-        # Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros')
-        self.conv_out = nn.Conv2d(c_hidden, c_hidden*2, kernel_size, stride=2)
+        self.blocks1 = Blocks(c_hidden, kernel_size, hidden_layer)
+        self.blocks2 = Blocks(c_hidden*2, kernel_size, hidden_layer)
         
         # Predict weight
         self.fc = nn.Linear(c_hidden*2, c_out)
@@ -41,18 +30,10 @@ class Modeling(nn.Module):
     
     # モデルに入力xを与えたときに自動的に呼ばれる。出力を返す。
     def forward(self, x):
-        # entry block
-        x = fixed_padding(x, self.kernel_size)
-        x = self.fc_in(x)
-        x = self.relu(x)
-        
-        # sub_module.Blocks()
-        x = self.blocks(x)
-        
-        # end block
-        x = fixed_padding(x, self.kernel_size)
-        x = self.conv_out(x)
-        x = self.relu(x)
+        x = self.conv_pool1(x)
+        x = self.blocks1(x)
+        x = self.conv_pool2(x)
+        x = self.blocks2(x)
         
         # Global Average Pooling
         x = F.adaptive_avg_pool2d(x, (1, 1))
