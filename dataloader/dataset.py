@@ -3,7 +3,6 @@ import torch
 from torch.utils.data import Dataset
 from tqdm import trange
 import os
-from pycocotools import mask
 from torchvision import transforms
 import dataloader.custom_transforms as tr
 from PIL import Image, ImageFile
