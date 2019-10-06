@@ -1,13 +1,54 @@
-# pytorch-template
+# pytorch-template (v-0.0.1-alpha)
+
+---
+
 pytorchプロジェクトを簡単に開発するためのテンプレート。
 
+## Description
 
-## test実行方法
+## Demo
 
-### 依存ライブラリ
+## Requirement
+- torch, torchvision
+- tensorboardX
 - tqdm
 
-### 学習実行方法
-./pytorch-template/で `python train.py --batch_size=2`  
+## Usage
+```python
+pytorch_template/
+├── run/
+├── dataloader/
+│   ├── __init__.py
+│   ├── custom_transforms.py
+│   ├── dataset.py        <--- "change this file!"
+│   └── utils.py
+├── modeling/        <--- "change this module!"
+│   ├── modeling.py
+│   └── sub_module.py
+├── sample_data/
+│   ├── <image_index>.png
+│   └── label.csv
+├── utils/
+│   ├── metrics.py
+│   ├── saver.py
+│   └── summaries.py
+├── working_top.ipynb
+├── __init__.py
+├── config.py        <--- "change this file!"
+├── predict.py
+├── train.py        <--- "change this file!"
+└── README.md
+```
 
-# Version alpha-0.0.1
+
+## Install
+
+## Contribution
+
+## Licence
+
+[MIT](https://github.com/tcnksm/tool/blob/master/LICENCE)
+
+## Author
+
+[Shotaro Kataoka](https://github.com/ShotaroKataoka)
