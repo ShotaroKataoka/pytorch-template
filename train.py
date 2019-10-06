@@ -95,6 +95,7 @@ class Trainer(object):
     def training(self, epoch):
         train_loss = 0.0
         self.model.train()
+        self.evaluator.reset()
         tbar = tqdm(self.train_loader)
         num_img_tr = len(self.train_loader)
         print(pycolor.GREEN + "[Epoch: %d]" % (epoch) + pycolor.END)
@@ -111,10 +112,19 @@ class Trainer(object):
             train_loss += loss.sum().item()
             tbar.set_description('Train loss: %.3f' % (train_loss / (i + 1)))
             self.writer.add_scalar('train/total_loss_iter', loss.item(), i + num_img_tr * epoch)
-
+            # Compute Metrics
+            pred = output.data.cpu().numpy()
+            pred = np.argmax(pred, axis=1)
+            target = target.cpu().numpy()
+            # Add batch sample into evaluator
+            self.evaluator.add_batch(target, pred)
+            
         self.writer.add_scalar('train/total_loss_epoch', train_loss, epoch)
         print('Size of train set: %5d' % (i * self.args.batch_size + image.data.shape[0]))
         print('Total train loss: %.3f' % (train_loss / (i + 1)))
+        Acc = self.evaluator.Accuracy()
+        F_score_Average = self.evaluator.F_score_Average()
+        print("Acc:{}, F_score:{}".format(Acc, F_score_Average))
 
         if self.args.no_val:
             # save checkpoint every epoch
@@ -143,24 +153,25 @@ class Trainer(object):
             loss = self.criterion(output, target)
             test_loss += loss.sum().item()
             tbar.set_description('Validation loss: %.3f' % (test_loss / (i + 1)))
+            # Compute Metrics
             pred = output.data.cpu().numpy()
-            target = target.cpu().numpy()
             pred = np.argmax(pred, axis=1)
+            target = target.cpu().numpy()
             # Add batch sample into evaluator
             self.evaluator.add_batch(target, pred)
 
         # Fast test during the training
         Acc = self.evaluator.Accuracy()
-        Acc_class = self.evaluator.Accuracy_Class()
+        F_score_Average = self.evaluator.F_score_Average()
         self.writer.add_scalar('val/total_loss_epoch', test_loss, epoch)
         self.writer.add_scalar('val/Acc', Acc, epoch)
-        self.writer.add_scalar('val/Acc_class', Acc_class, epoch)
+        self.writer.add_scalar('val/F_score', F_score_Average, epoch)
         print('Size of validation set: %5d' % (i * self.args.batch_size + image.data.shape[0]))
-        print("Acc:{}, Acc_class:{}".format(Acc, Acc_class))
         print('Total validation loss: %.3f' % (test_loss / (i + 1)))
+        print("Acc:{}, F_score:{}".format(Acc, F_score_Average))
         print('---------------------')
 
-        new_pred = Acc_class
+        new_pred = F_score_Average
         if new_pred > self.best_pred:
             is_best = True
             self.best_pred = new_pred
