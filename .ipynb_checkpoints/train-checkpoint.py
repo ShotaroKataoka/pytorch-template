@@ -53,7 +53,6 @@ class Trainer(object):
         Criterion: You have to define Loss function. (e.g. CrossEntropy)
         """
         ## ***Define Dataloader***
-        kwargs = {'num_workers': args.workers, 'pin_memory': True}
         self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(self.args.batch_size)
         
         ## ***Define Your Model***
@@ -73,13 +72,20 @@ class Trainer(object):
         self.model, self.optimizer = model, optimizer
         
         
-
-        # Using cuda
+        # Some settings
+        """
+        You don't have to touch bellow code.
+        
+        Using cuda: Enable to use cuda if you want.
+        Resuming checkpoint: You can resume training if you want.
+        Clear start epoch if fine-tuning: fine tuning setting.
+        """
+        ## ***Using cuda***
         if args.cuda:
             self.model = torch.nn.DataParallel(self.model, device_ids=self.args.gpu_ids)
             self.model = self.model.cuda()
 
-        # Resuming checkpoint
+        ## ***Resuming checkpoint***
         self.best_pred = 0.0
         if args.resume is not None:
             if not os.path.isfile(args.resume):
@@ -96,15 +102,23 @@ class Trainer(object):
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
 
-        # Clear start epoch if fine-tuning
+        ## ***Clear start epoch if fine-tuning***
         if args.ft:
             args.start_epoch = 0
 
     def training(self, epoch):
+        """
+        Run training 1 epoch.
+        """
+        # Initializing
         train_loss = 0.0
+        ## Set model 'traininig' mode.
         self.model.train()
+        ## Reset evaluator's confusion matrix.
         self.evaluator.reset()
+        ## tqdm: It show us progress of training.
         tbar = tqdm(self.train_loader)
+        
         num_img_tr = len(self.train_loader)
         print(pycolor.GREEN + "[Epoch: %d]" % (epoch) + pycolor.END)
         print(pycolor.YELLOW+"Training:"+pycolor.END)
