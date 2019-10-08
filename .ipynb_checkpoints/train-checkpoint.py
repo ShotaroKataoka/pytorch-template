@@ -1,40 +1,28 @@
-import argparse
-import os
 import numpy as np
-from tqdm import tqdm
+import gensim
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import os
+from tqdm import tqdm
+import argparse
 
-from config import Config
-from dataloader import make_data_loader
+# Project Modules
 from utils.saver import Saver
 from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
-from config import Config
-conf = Config()
-
-# (****Change****)
+from dataloader import make_data_loader
 from modeling.modeling import Modeling
-
-class pycolor:
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    PURPLE = '\033[35m'
-    CYAN = '\033[36m'
-    WHITE = '\033[37m'
-    END = '\033[0m'
-    BOLD = '\038[1m'
-    UNDERLINE = '\033[4m'
-    INVISIBLE = '\033[08m'
-    REVERCE = '\033[07m'
+from config import Config, pycolor
+conf = Config()
 
 class Trainer(object):
     def __init__(self, args):
         self.args = args
-
+        
+        """
+        Define and Initialize Project Modules.
+        """
         # Define Saver
         self.saver = Saver(args)
         self.saver.save_experiment_config()
