@@ -30,6 +30,7 @@ class Trainer(object):
         lr = hyper_params["lr"]
         batch_size = hyper_params["batch_size"]
         optimizer_name = hyper_params["optimizer_name"]
+        epochs = args.epochs
         
         
         # Define Utils. (No need to Change.)
@@ -42,7 +43,7 @@ class Trainer(object):
         Evaluator: To calculate some metrics (e.g. Accuracy).  <utils.metrics.Evaluator()>
         """
         ## ***Define Saver***
-        self.saver = Saver(args)
+        self.saver = Saver(args.model_name, lr, epochs)
         self.saver.save_experiment_config()
         
         ## ***Define Tensorboard Summary***
@@ -75,7 +76,7 @@ class Trainer(object):
 
         # ***Define Optimizer***
         optimizer = torch.optim.Adam(model.parameters(),
-                                     lr=args.lr,
+                                     lr=lr,
                                      weight_decay=args.weight_decay)
         
         # ***Define Criterion***
@@ -153,7 +154,7 @@ class Trainer(object):
             self.evaluator.add_batch(target, pred)
             
         self.writer.add_scalar('train/total_loss_epoch', train_loss, epoch)
-        print('Size of train set: %5d' % (i * self.args.batch_size + image.data.shape[0]))
+        print('Size of train set: %5d' % (i * batch_size + image.data.shape[0]))
         print('Total train loss: %.3f' % (train_loss / (i + 1)))
         Acc = self.evaluator.Accuracy()
         F_score_Average = self.evaluator.F_score_Average()
@@ -234,6 +235,8 @@ def main():
     parser = argparse.ArgumentParser(description="PyTorch Template.")
     parser.add_argument('--model-name', type=str, default='model01',
                         help='model name (default model01)')
+    parser.add_argument('--optimizer_name', type=str, default='Adam',
+                        help='optimizer name (default Adam)')
     parser.add_argument('--optuna', action='store_true', default=
                         False, help='use Optuna')
     parser.add_argument('--workers', type=int, default=4,
