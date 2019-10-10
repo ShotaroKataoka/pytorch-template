@@ -1,77 +1,91 @@
-import argparse
 import os
+import argparse
+
 import numpy as np
-from tqdm import tqdm
+import gensim
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from tqdm import tqdm
 
-from config import Config
-from dataloader import make_data_loader
+# Project Modules
 from utils.saver import Saver
 from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
-from config import Config
-conf = Config()
-
-# (****Change****)
+from dataloader import make_data_loader
 from modeling.modeling import Modeling
-
-class pycolor:
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    PURPLE = '\033[35m'
-    CYAN = '\033[36m'
-    WHITE = '\033[37m'
-    END = '\033[0m'
-    BOLD = '\038[1m'
-    UNDERLINE = '\033[4m'
-    INVISIBLE = '\033[08m'
-    REVERCE = '\033[07m'
+from config import Config, pycolor
+conf = Config()
 
 class Trainer(object):
     def __init__(self, args):
         self.args = args
-
-        # Define Saver
+        
+        # Define Utils. (No need to Change.)
+        """
+        These are Project Modules.
+        You don't have to change these.
+        
+        Saver: To save model weight.  <utils.saver.Saver()>
+        TensorboardSummary: To write tensorboard file.  <utils.summaries.TensorboardSummary()>
+        Evaluator: To calculate some metrics (e.g. Accuracy).  <utils.metrics.Evaluator()>
+        """
+        ## ***Define Saver***
         self.saver = Saver(args)
         self.saver.save_experiment_config()
         
-        # Define Tensorboard Summary
+        ## ***Define Tensorboard Summary***
         self.summary = TensorboardSummary(self.saver.experiment_dir)
         self.writer = self.summary.create_summary()
         
-        # Define Dataloader
-        kwargs = {'num_workers': args.workers, 'pin_memory': True}
+        ## ***Define Evaluator***
+        self.evaluator = Evaluator(self.nclass)
+        
+        
+        # Define Training components. (You have to Change!)
+        """
+        These are important setting for training.
+        You have to change these.
+        
+        make_data_loader: This calls <dataloader>  <dataloader.__init__>
+        Modeling: You have to define your model in <modeling.modeling.Modeling()> or another file.
+        Optimizer: You have to define Optimizer.  (e.g. Adam, SGD)
+        Criterion: You have to define Loss function. (e.g. CrossEntropy)
+        """
+        ## ***Define Dataloader***
         self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(self.args.batch_size)
         
-        # Define network (****Change****)
+        ## ***Define Your Model***
         model = Modeling(c_in=conf.input_channel,
                          c_out=conf.num_class,
                          c_hidden=conf.hidden_channel,
                          hidden_layer=conf.hidden_layer,
                          kernel_size=3)
 
-        # Define Optimizer
+        # ***Define Optimizer***
         optimizer = torch.optim.Adam(model.parameters(),
                                      lr=args.lr,
                                      weight_decay=args.weight_decay)
-
-        # Define Criterion
+        
+        # ***Define Criterion***
         self.criterion = nn.CrossEntropyLoss(reduction="none")
         self.model, self.optimizer = model, optimizer
         
-        # Define Evaluator
-        self.evaluator = Evaluator(self.nclass)
-
-        # Using cuda
+        
+        # Some settings
+        """
+        You don't have to touch bellow code.
+        
+        Using cuda: Enable to use cuda if you want.
+        Resuming checkpoint: You can resume training if you want.
+        Clear start epoch if fine-tuning: fine tuning setting.
+        """
+        ## ***Using cuda***
         if args.cuda:
             self.model = torch.nn.DataParallel(self.model, device_ids=self.args.gpu_ids)
             self.model = self.model.cuda()
 
-        # Resuming checkpoint
+        ## ***Resuming checkpoint***
         self.best_pred = 0.0
         if args.resume is not None:
             if not os.path.isfile(args.resume):
@@ -88,15 +102,23 @@ class Trainer(object):
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
 
-        # Clear start epoch if fine-tuning
+        ## ***Clear start epoch if fine-tuning***
         if args.ft:
             args.start_epoch = 0
 
     def training(self, epoch):
+        """
+        Run training 1 epoch.
+        """
+        # Initializing
         train_loss = 0.0
+        ## Set model 'traininig' mode.
         self.model.train()
+        ## Reset evaluator's confusion matrix.
         self.evaluator.reset()
+        ## tqdm: It show us progress of training.
         tbar = tqdm(self.train_loader)
+        
         num_img_tr = len(self.train_loader)
         print(pycolor.GREEN + "[Epoch: %d]" % (epoch) + pycolor.END)
         print(pycolor.YELLOW+"Training:"+pycolor.END)
