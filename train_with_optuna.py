@@ -59,7 +59,7 @@ class Trainer(object):
         These are important setting for training.
         You have to change these.
         
-        make_data_loader: This calls <dataloader>  <dataloader.__init__>
+        make_data_loader: This creates some <Dataloader>s.  <dataloader.__init__>
         Modeling: You have to define your model in <modeling.modeling.Modeling()> or another file.
         Optimizer: You have to define Optimizer.  (e.g. Adam, SGD)
         Criterion: You have to define Loss function. (e.g. CrossEntropy)
