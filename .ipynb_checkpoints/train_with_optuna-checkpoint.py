@@ -222,7 +222,7 @@ class Trainer(object):
         If you set arg "--optuna", this method offer hyper-params with Optuna.
         
         Optuna is tool for optimizing hyper-params using bayesian method.
-        Although It can optimize hyper-params automatically, It is very heavy.
+        Although It can optimize hyper-params automatically, it is very heavy.
         """
         if self.args.optuna:
             """
