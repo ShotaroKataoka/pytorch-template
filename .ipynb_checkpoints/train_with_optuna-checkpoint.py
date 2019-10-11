@@ -217,7 +217,18 @@ class Trainer(object):
             }, is_best)
 
     def define_hyper_params(self):
+        """
+        This method define hyper-params by args or Optuna.
+        If you set arg "--optuna", this method offer hyper-params with Optuna.
+        
+        Optuna is tool for optimizing hyper-params using bayesian method.
+        Although It can optimize hyper-params automatically, It is very heavy.
+        """
         if self.args.optuna:
+            """
+            If you use Optuna, you can add hyper-params which you want to optimize.
+            https://optuna.readthedocs.io/en/latest/tutorial/configurations.html
+            """
             lr = self.trial.suggest_loguniform('lr', 1e-8, 1e-2)
             batch_size = self.trial.suggest_categorical('batch_size', [1, 2, 4, 8, 16, 32, 64])
             optimizer_name = self.trial.suggest_categorical('optimizer', ["Adam", "SGD"])
