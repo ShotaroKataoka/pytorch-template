@@ -16,27 +16,40 @@ from utils.metrics import Evaluator
 from dataloader import make_data_loader
 from modeling.modeling import Modeling
 from config import Config, pycolor
+
+# instance of config
 conf = Config()
+# set disable log of optuna
+optuna.logging.disable_default_handler()
 
 class Trainer(object):
-    def __init__(self, args):
+    def __init__(self, args, trial):
         # Define Hyper-Params 
         """
         You can choose how to optimize hyper-params (auto or manual.)
         If you set arg --optuna, hyper-params are optimized automatically.
+        
+        args: input value through command line.
+        trial: input value of Optuna.
         """
+        ## Get params
         self.args = args
-        hyper_params = self.define_hyper_params()
-        lr = hyper_params["lr"]
+        hyper_params = self.define_hyper_params(trial)
+        
+        ## Train param
         batch_size = hyper_params["batch_size"]
-        optimizer_name = hyper_params["optimizer_name"]
         epochs = args.epochs
+        
+        ## Optimizer param
+        optimizer_name = hyper_params["optimizer_name"]
+        lr = hyper_params["lr"]
+        weight_decay = hyper_params["weight_decay"]
         
         
         # Define Utils. (No need to Change.)
         """
         These are Project Modules.
-        You don't have to change these.
+        You may not have to change these.
         
         Saver: To save model weight.  <utils.saver.Saver()>
         TensorboardSummary: To write tensorboard file.  <utils.summaries.TensorboardSummary()>
@@ -49,9 +62,6 @@ class Trainer(object):
         ## ***Define Tensorboard Summary***
         self.summary = TensorboardSummary(self.saver.experiment_dir)
         self.writer = self.summary.create_summary()
-        
-        ## ***Define Evaluator***
-        self.evaluator = Evaluator(self.nclass)
         
         
         # Define Training components. (You have to Change!)
@@ -73,11 +83,15 @@ class Trainer(object):
                          c_hidden=conf.hidden_channel,
                          hidden_layer=conf.hidden_layer,
                          kernel_size=3)
-
+        
+        ## ***Define Evaluator***
+        self.evaluator = Evaluator(self.nclass)
+        
         # ***Define Optimizer***
-        optimizer = torch.optim.Adam(model.parameters(),
-                                     lr=lr,
-                                     weight_decay=args.weight_decay)
+        if optimizer_name=="Adam":
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=args.weight_decay)
+        elif optimizer_name=="SGD":
+            optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=args.weight_decay)
         
         # ***Define Criterion***
         self.criterion = nn.CrossEntropyLoss(reduction="none")
@@ -216,30 +230,37 @@ class Trainer(object):
                 'best_pred': self.best_pred,
             }, is_best)
 
-    def define_hyper_params(self):
+    def define_hyper_params(self, trial):
         """
         This method define hyper-params by args or Optuna.
-        If you set arg "--optuna", this method offer hyper-params with Optuna.
+        If you set arg "--optuna", this method offer hyper-params optimized by Optuna.
         
         Optuna is tool for optimizing hyper-params using bayesian method.
-        Although It can optimize hyper-params automatically, it is very heavy.
+        Although it can optimize hyper-params automatically, it is very heavy.
         """
         if self.args.optuna:
             """
             If you use Optuna, you can add hyper-params which you want to optimize.
             https://optuna.readthedocs.io/en/latest/tutorial/configurations.html
             """
-            lr = self.trial.suggest_loguniform('lr', 1e-8, 1e-2)
-            batch_size = self.trial.suggest_categorical('batch_size', [1, 2, 4, 8, 16, 32, 64])
-            optimizer_name = self.trial.suggest_categorical('optimizer', ["Adam", "SGD"])
+            ## Train param
+            batch_size = trial.suggest_categorical('batch_size', [1, 2, 4, 8, 16, 32, 64])
+            ## Optimizer param
+            optimizer_name = trial.suggest_categorical('optimizer', ["Adam", "SGD"])
+            lr = trial.suggest_loguniform('lr', 1e-8, 1e-2)
+            weight_decay = trial.suggest_loguniform('weight_decay', 1e-10, 1e-3)
         else:
-            lr = self.args.lr
+            ## Train param
             batch_size = self.args.batch_size
+            ## Optimizer param
             optimizer_name = self.args.optimizer_name
-        
+            lr = self.args.lr
+            weight_decay = self.args.weight_decay
+            
         return {"lr": lr,
                 "batch_size": batch_size,
-                "optimizer_name": optimizer_name}
+                "optimizer_name": optimizer_name,
+                "weight_decay": weight_decay}
         
         
 def main():
