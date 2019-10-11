@@ -132,6 +132,78 @@ class Trainer(object):
         if args.ft:
             args.start_epoch = 0
 
+    def run(self, epoch, mode="train", optuna=False):
+        # Initializing
+        epoch_loss = 0.0
+        ## Set model mode & tqdm (progress bar)
+        assert mode=="train" or mode=="val", "argument 'mode' can be 'train' or 'val.' Not {}.".format(mode)
+        if mode=="train":
+            print(pycolor.GREEN + "[Epoch: {}]".format(epoch) + pycolor.END)
+            print(pycolor.YELLOW+"Training:"+pycolor.END)
+            self.model.train()
+            tbar = tqdm(self.train_loader)
+            num_dataset = len(self.train_loader)
+        elif mode=="val":
+            print(pycolor.YELLOW+"Validation:"+pycolor.END)
+            self.model.eval()
+            tbar = tqdm(self.val_loader)
+            num_dataset = len(self.val_loader)
+        ## Reset confusion matrix of evaluator
+        self.evaluator.reset()
+        
+        # Run 1 epoch
+        for i, sample in enumerate(tbar):
+            inputs, target = sample["image"], sample["label"]
+            if self.args.cuda:
+                inputs, target = inputs.cuda(), target.cuda()
+            if mode=="train":
+                self.optimizer.zero_grad()
+                output = self.model(inputs)
+            elif mode=="val":
+                with torch.no_grad():
+                    output = self.model(inputs)
+            loss = self.criterion(output, target).sum()
+            if mode=="train":
+                loss.backward()
+                self.optimizer.step()
+            epoch_loss += loss.item()
+            tbar.set_description('{} loss: {:.3f}'.format(mode, (epoch_loss / ((i + 1)*self.args.batch_size))))
+            # Compute Metrics
+            pred = output.data.cpu().numpy()
+            pred = np.argmax(pred, axis=1)
+            target = target.cpu().numpy()
+            ## Add batch into evaluator
+            self.evaluator.add_batch(target, pred)
+        # Save Log
+        ## Evaluate
+        Acc = self.evaluator.Accuracy()
+        F_score_Average = self.evaluator.F_score_Average()
+        ## Save results
+        self.writer.add_scalar('{}/loss_epoch'.format(mode), epoch_loss, epoch)
+        self.writer.add_scalar('{}/Acc'.format(mode), Acc, epoch)
+        self.writer.add_scalar('{}/F_score'.format(mode), F_score_Average, epoch)
+        print('Total {} loss: {:.3f}'.format(mode, train_loss / (i + 1)))
+        print("Acc:{}, F_score:{}".format(Acc, F_score_Average))
+        ## Save model
+        if mode=="train" and self.args.no_val:
+            is_best = False
+            is_save = True
+        elif mode=="val":
+            new_pred = F_score_Average
+            print("---------------------")
+            if new_pred > self.best_pred:
+                is_best = True
+                is_save = True
+                print("model improve best score from {:.4f} to {:.4f}.".format(self.best_pred, new_pred))
+                self.best_pred = new_pred
+        if is_save:
+            self.saver.save_checkpoint({
+                'epoch': epoch + 1,
+                'state_dict': self.model.module.state_dict(),
+                'optimizer': self.optimizer.state_dict(),
+                'best_pred': self.best_pred,
+            }, is_best)
+            
     def training(self, epoch):
         """
         Run training 1 epoch.
