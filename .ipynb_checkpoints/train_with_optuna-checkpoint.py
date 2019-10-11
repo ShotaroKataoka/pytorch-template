@@ -133,9 +133,17 @@ class Trainer(object):
             args.start_epoch = 0
 
     def run(self, epoch, mode="train", optuna=False):
+        """
+        run training or validation 1 epoch.
+        You don't have to change almost of this method.
+        
+        Change point (if you need):
+        - Evaluation: You can change metrics of monitoring.
+        - writer.add_scalar: You can change metrics to be saved tensorboard.
+        """
         # Initializing
         epoch_loss = 0.0
-        ## Set model mode & tqdm (progress bar)
+        ## Set model mode & tqdm (progress bar; it wrap dataloader)
         assert mode=="train" or mode=="val", "argument 'mode' can be 'train' or 'val.' Not {}.".format(mode)
         if mode=="train":
             print(pycolor.GREEN + "[Epoch: {}]".format(epoch) + pycolor.END)
@@ -175,14 +183,14 @@ class Trainer(object):
             ## Add batch into evaluator
             self.evaluator.add_batch(target, pred)
         # Save Log
-        ## Evaluate
+        ## **********Evaluate**********
         Acc = self.evaluator.Accuracy()
         F_score_Average = self.evaluator.F_score_Average()
         ## Save results
-        self.writer.add_scalar('{}/loss_epoch'.format(mode), epoch_loss, epoch)
+        self.writer.add_scalar('{}/loss_epoch'.format(mode), epoch_loss / num_dataset, epoch)
         self.writer.add_scalar('{}/Acc'.format(mode), Acc, epoch)
         self.writer.add_scalar('{}/F_score'.format(mode), F_score_Average, epoch)
-        print('Total {} loss: {:.3f}'.format(mode, train_loss / (i + 1)))
+        print('Total {} loss: {:.3f}'.format(mode, epoch_loss / num_dataset))
         print("Acc:{}, F_score:{}".format(Acc, F_score_Average))
         ## Save model
         if mode=="train" and self.args.no_val:
