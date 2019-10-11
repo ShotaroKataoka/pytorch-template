@@ -1,7 +1,7 @@
-import torch
 import random
-import numpy as np
 
+import torch
+import numpy as np
 from PIL import Image, ImageOps, ImageFilter
 
 class Normalize(object):

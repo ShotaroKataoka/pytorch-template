@@ -1,10 +1,12 @@
+import sys
+
 from torch.utils.data import DataLoader
 
 from dataloader.dataset import Dataset
-import sys
 sys.path.append('..')
 from config import Config
 
+# instance of config
 conf = Config()
 
 def make_data_loader(batch_size=16):
@@ -15,6 +17,6 @@ def make_data_loader(batch_size=16):
     
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-    test_loader = None
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
     
     return train_loader, val_loader, test_loader, num_class
