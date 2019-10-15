@@ -58,7 +58,7 @@ class Trainer(object):
         Evaluator: To calculate some metrics (e.g. Accuracy).  <utils.metrics.Evaluator()>
         """
         ## ***Define Saver***
-        self.saver = Saver(conf.model_name, lr, epochs)
+        self.saver = Saver(self.args.model_name, lr, epochs)
         self.saver.save_experiment_config()
         
         ## ***Define Tensorboard Summary***
@@ -289,10 +289,12 @@ def main():
     parser.add_argument('--trial_size', type=int, default=100, metavar='N', help='number of trials to optimize (default: 100)')
     
     ## ***Training hyper params***
+    parser.add_argument('--model_name', type=str, default="model01", metavar='Name', help='model name (default: model01)')
     parser.add_argument('--epochs', type=int, default=30, metavar='N', help='number of epochs to train (default: auto)')
     parser.add_argument('--start_epoch', type=int, default=0, metavar='N', help='start epochs (default:0)')
     parser.add_argument('--batch_size', type=int, default=None, metavar='N', help='input batch size for training (default: auto)')
     parser.add_argument('--test_batch_size', type=int, default=None, metavar='N', help='input batch size for testing (default: auto)')
+    
     
     ## ***Optimizer params***
     parser.add_argument('--lr', type=float, default=1e-6, metavar='LR', help='learning rate (default: 1e-6)')
@@ -324,13 +326,20 @@ def main():
             args.gpu_ids = [int(s) for s in args.gpu_ids.split(',')]
         except ValueError:
             raise ValueError('Argument --gpu_ids must be a comma-separated list of integers only')
-
+        
     ## ***default batch_size setting***
     if args.batch_size is None:
         args.batch_size = 4 * len(args.gpu_ids)
     if args.test_batch_size is None:
         args.test_batch_size = args.batch_size
 
+    ## ***Model name***
+    if args.optuna:
+        directory = os.path.join('run', args.model_name+"_optuna_*")
+        run = sorted(glob(directory))
+        run_id = int(run[-1].split('_')[-1]) + 1 if run else 0
+        args.model_name = args.model_name + "_optuna_{:0=2}".format(run_id)
+        
     print(args)
     torch.manual_seed(args.seed)
     
@@ -347,13 +356,8 @@ def main():
         
         ## ***Save study***
         df = study.trials_dataframe()
-        directory = os.path.join('run', conf.model_name, "optuna")
-        directory = sorted(glob(os.path.join(directory, 'experiment_*')))
-        run_id = int(directory[-1].split('_')[-1]) + 1 if directory else 0
-        experiment_dir = os.path.join(directory, 'experiment_{}'.format(str(run_id)))
-        if not os.path.exists(experiment_dir):
-            os.makedirs(experiment_dir)
-        df.to_csv(experiment_dir)
+        directory = os.path.join('run', args.model_name)
+        df.to_csv(os.path.join(directory, "trial.csv"))
     else:
         train_runner = create_objective(args, None)
         train_runner(None)
