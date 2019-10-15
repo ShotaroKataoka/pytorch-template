@@ -1,5 +1,6 @@
 import os
 import argparse
+from glob import glob
 
 import numpy as np
 import gensim
@@ -57,7 +58,7 @@ class Trainer(object):
         Evaluator: To calculate some metrics (e.g. Accuracy).  <utils.metrics.Evaluator()>
         """
         ## ***Define Saver***
-        self.saver = Saver(args.model_name, lr, epochs)
+        self.saver = Saver(conf.model_name, lr, epochs)
         self.saver.save_experiment_config()
         
         ## ***Define Tensorboard Summary***
@@ -250,7 +251,7 @@ class Trainer(object):
             ## Train param
             batch_size = self.args.batch_size
             ## Optimizer param
-            optimizer_name = self.args.optimizer_name
+            optimizer_name = conf.optimizer_name
             lr = self.args.lr
             weight_decay = self.args.weight_decay
             
@@ -278,56 +279,45 @@ def create_objective(args, pbar):
     return objective
     
 def main():
+    # ------------------------- #
+    # Set parser
     parser = argparse.ArgumentParser(description="PyTorch Template.")
-    parser.add_argument('--model_name', type=str, default='model01',
-                        help='model name (default model01)')
-    parser.add_argument('--optimizer_name', type=str, default='Adam',
-                        help='optimizer name (default Adam)')
-    parser.add_argument('--optuna', action='store_true', default=
-                        False, help='use Optuna')
-    parser.add_argument('--prune', action='store_true', default=
-                        False, help='use Optuna')
-    parser.add_argument('--workers', type=int, default=4,
-                        metavar='N', help='dataloader threads')
-    # training hyper params
-    parser.add_argument('--epochs', type=int, default=30, metavar='N',
-                        help='number of epochs to train (default: auto)')
-    parser.add_argument('--start_epoch', type=int, default=0,
-                        metavar='N', help='start epochs (default:0)')
-    parser.add_argument('--batch_size', type=int, default=None,
-                        metavar='N', help='input batch size for \
-                                training (default: auto)')
-    parser.add_argument('--test_batch_size', type=int, default=None,
-                        metavar='N', help='input batch size for \
-                                testing (default: auto)')
-    # optimizer params
-    parser.add_argument('--lr', type=float, default=1e-6, metavar='LR',
-                        help='learning rate (default: 1e-6)')
-    parser.add_argument('--weight_decay', type=float, default=5e-4,
-                        metavar='M', help='w-decay (default: 5e-4)')
-    # cuda, seed and logging
-    parser.add_argument('--no_cuda', action='store_true', default=
-                        False, help='disables CUDA training')
-    parser.add_argument('--gpu_ids', type=str, default='0',
-                        help='use which gpu to train, must be a \
-                        comma-separated list of integers only (default=0)')
-    parser.add_argument('--seed', type=int, default=1, metavar='S',
-                        help='random seed (default: 1)')
-    # checking point
-    parser.add_argument('--resume', type=str, default=None,
-                        help='put the path to resuming file if needed')
-    parser.add_argument('--checkname', type=str, default=None,
-                        help='set the checkpoint name')
-    # finetuning pre-trained models
-    parser.add_argument('--ft', action='store_true', default=False,
-                        help='finetuning on a different dataset')
-    # evaluation option
-    parser.add_argument('--eval_interval', type=int, default=1,
-                        help='evaluation interval (default: 1)')
-    parser.add_argument('--no_val', action='store_true', default=False,
-                        help='skip validation during training')
+    
+    ## ***Optuna option***
+    parser.add_argument('--optuna', action='store_true', default=False, help='use Optuna')
+    parser.add_argument('--prune', action='store_true', default=False, help='use Optuna Pruning')
+    parser.add_argument('--trial_size', type=int, default=100, metavar='N', help='number of trials to optimize (default: 100)')
+    
+    ## ***Training hyper params***
+    parser.add_argument('--epochs', type=int, default=30, metavar='N', help='number of epochs to train (default: auto)')
+    parser.add_argument('--start_epoch', type=int, default=0, metavar='N', help='start epochs (default:0)')
+    parser.add_argument('--batch_size', type=int, default=None, metavar='N', help='input batch size for training (default: auto)')
+    parser.add_argument('--test_batch_size', type=int, default=None, metavar='N', help='input batch size for testing (default: auto)')
+    
+    ## ***Optimizer params***
+    parser.add_argument('--lr', type=float, default=1e-6, metavar='LR', help='learning rate (default: 1e-6)')
+    parser.add_argument('--weight_decay', type=float, default=5e-4, metavar='M', help='w-decay (default: 5e-4)')
+    
+    ## ***cuda, seed and logging***
+    parser.add_argument('--no_cuda', action='store_true', default=False, help='disables CUDA training')
+    parser.add_argument('--gpu_ids', type=str, default='0', help='use which gpu to train, must be a comma-separated list of integers only (default=0)')
+    parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
+    
+    ## ***checking point***
+    parser.add_argument('--resume', type=str, default=None, help='put the path to resuming file if needed')
+    
+    ## ***finetuning pre-trained models***
+    parser.add_argument('--ft', action='store_true', default=False, help='finetuning on a different dataset')
+    
+    ## ***evaluation option***
+    parser.add_argument('--eval_interval', type=int, default=1, help='evaluation interval (default: 1)')
+    parser.add_argument('--no_val', action='store_true', default=False, help='skip validation during training')
 
     args = parser.parse_args()
+    
+    # ------------------------- #
+    # Set params
+    ## ***cuda setting***
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     if args.cuda:
         try:
@@ -335,27 +325,35 @@ def main():
         except ValueError:
             raise ValueError('Argument --gpu_ids must be a comma-separated list of integers only')
 
+    ## ***default batch_size setting***
     if args.batch_size is None:
         args.batch_size = 4 * len(args.gpu_ids)
-
     if args.test_batch_size is None:
         args.test_batch_size = args.batch_size
 
-    if args.checkname is None:
-        args.checkname = 'default-model'
     print(args)
     torch.manual_seed(args.seed)
+    
+    # ------------------------- #
+    # Start Learning
     print('Starting Epoch:', args.start_epoch)
     print('Total Epoches:', args.epochs)
     
     if args.optuna:
-        TRIAL_SIZE = 10
+        TRIAL_SIZE = args.trial_size
         with tqdm(total=TRIAL_SIZE) as pbar:
             study = optuna.create_study()
             study.optimize(create_objective(args, pbar), n_trials=TRIAL_SIZE)
-        df = study.trials_dataframe()
-        df.to_csv("./run/df.csv")
         
+        ## ***Save study***
+        df = study.trials_dataframe()
+        directory = os.path.join('run', conf.model_name, "optuna")
+        directory = sorted(glob(os.path.join(directory, 'experiment_*')))
+        run_id = int(directory[-1].split('_')[-1]) + 1 if directory else 0
+        experiment_dir = os.path.join(directory, 'experiment_{}'.format(str(run_id)))
+        if not os.path.exists(experiment_dir):
+            os.makedirs(experiment_dir)
+        df.to_csv(experiment_dir)
     else:
         train_runner = create_objective(args, None)
         train_runner(None)
