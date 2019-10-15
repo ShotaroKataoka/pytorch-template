@@ -167,7 +167,7 @@ class Trainer(object):
         # ------------------------- #
         # Run 1 epoch
         for i, sample in enumerate(tbar):
-            inputs, target = sample["image"], sample["label"]
+            inputs, target = sample["inputs"], sample["label"]
             if self.args.cuda:
                 inputs, target = inputs.cuda(), target.cuda()
             if mode=="train":
@@ -349,21 +349,20 @@ def main():
     print('Total Epoches:', args.epochs)
     
     if args.optuna:
+        ## ***Use Optuna***
         TRIAL_SIZE = args.trial_size
         with tqdm(total=TRIAL_SIZE) as pbar:
             study = optuna.create_study()
             study.optimize(create_objective(args, pbar), n_trials=TRIAL_SIZE)
-        
-        ## ***Save study***
+        ### Save study
         df = study.trials_dataframe()
         directory = os.path.join('run', args.model_name)
         df.to_csv(os.path.join(directory, "trial.csv"))
     else:
+        ## ***Not use Optuna***
         train_runner = create_objective(args, None)
         train_runner(None)
     
-    
-
 if __name__ == "__main__":
     main()
 

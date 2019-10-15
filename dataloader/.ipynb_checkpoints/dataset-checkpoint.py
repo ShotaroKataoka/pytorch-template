@@ -27,7 +27,7 @@ class Dataset():
         y = pd.read_csv(label_path)["label"].values
         ids = pd.read_csv(label_path)["id"].values
         
-        # Get image path
+        #inputs path
         img_path = []
         for id in ids:
             img_path += [conf.dataset_dir+"{}.png".format(id)]
@@ -50,7 +50,7 @@ class Dataset():
     def __getitem__(self, index):
         _img = Image.open(self.img_path[index]).convert('RGB')
         _target = self.y[index]
-        sample = {'image': _img, 'label': _target}
+        sample = {'inputs': _img, 'label': _target}
 
         if self.split == "train":
             return self.transform_tr(sample)
