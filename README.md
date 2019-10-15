@@ -1,4 +1,4 @@
-# pytorch-template (v0.1.0-alpha)
+# pytorch-template (v0.1.1-alpha)
 
 ---
 
