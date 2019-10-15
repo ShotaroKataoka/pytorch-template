@@ -341,8 +341,6 @@ def main():
     if args.test_batch_size is None:
         args.test_batch_size = args.batch_size
 
-    args.lr = args.lr / (4 * len(args.gpu_ids)) * args.batch_size
-
     if args.checkname is None:
         args.checkname = 'default-model'
     print(args)
