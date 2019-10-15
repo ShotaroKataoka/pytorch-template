@@ -293,8 +293,6 @@ def main():
     parser.add_argument('--epochs', type=int, default=30, metavar='N', help='number of epochs to train (default: auto)')
     parser.add_argument('--start_epoch', type=int, default=0, metavar='N', help='start epochs (default:0)')
     parser.add_argument('--batch_size', type=int, default=None, metavar='N', help='input batch size for training (default: auto)')
-    parser.add_argument('--test_batch_size', type=int, default=None, metavar='N', help='input batch size for testing (default: auto)')
-    
     
     ## ***Optimizer params***
     parser.add_argument('--lr', type=float, default=1e-6, metavar='LR', help='learning rate (default: 1e-6)')
@@ -330,8 +328,6 @@ def main():
     ## ***default batch_size setting***
     if args.batch_size is None:
         args.batch_size = 4 * len(args.gpu_ids)
-    if args.test_batch_size is None:
-        args.test_batch_size = args.batch_size
 
     ## ***Model name***
     if args.optuna:

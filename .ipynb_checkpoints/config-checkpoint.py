@@ -10,7 +10,7 @@ class Config(object):
     num_class = 2
     hidden_channel = 128
     hidden_layer = 4
-    
+
 
 class pycolor:
     RED = '\033[31m'
