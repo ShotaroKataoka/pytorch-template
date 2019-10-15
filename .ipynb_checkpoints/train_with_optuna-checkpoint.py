@@ -279,7 +279,7 @@ def create_objective(args, pbar):
     
 def main():
     parser = argparse.ArgumentParser(description="PyTorch Template.")
-    parser.add_argument('--model-name', type=str, default='model01',
+    parser.add_argument('--model_name', type=str, default='model01',
                         help='model name (default model01)')
     parser.add_argument('--optimizer_name', type=str, default='Adam',
                         help='optimizer name (default Adam)')
@@ -294,21 +294,21 @@ def main():
                         help='number of epochs to train (default: auto)')
     parser.add_argument('--start_epoch', type=int, default=0,
                         metavar='N', help='start epochs (default:0)')
-    parser.add_argument('--batch-size', type=int, default=None,
+    parser.add_argument('--batch_size', type=int, default=None,
                         metavar='N', help='input batch size for \
                                 training (default: auto)')
-    parser.add_argument('--test-batch-size', type=int, default=None,
+    parser.add_argument('--test_batch_size', type=int, default=None,
                         metavar='N', help='input batch size for \
                                 testing (default: auto)')
     # optimizer params
     parser.add_argument('--lr', type=float, default=1e-6, metavar='LR',
                         help='learning rate (default: 1e-6)')
-    parser.add_argument('--weight-decay', type=float, default=5e-4,
+    parser.add_argument('--weight_decay', type=float, default=5e-4,
                         metavar='M', help='w-decay (default: 5e-4)')
     # cuda, seed and logging
-    parser.add_argument('--no-cuda', action='store_true', default=
+    parser.add_argument('--no_cuda', action='store_true', default=
                         False, help='disables CUDA training')
-    parser.add_argument('--gpu-ids', type=str, default='0',
+    parser.add_argument('--gpu_ids', type=str, default='0',
                         help='use which gpu to train, must be a \
                         comma-separated list of integers only (default=0)')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
@@ -322,9 +322,9 @@ def main():
     parser.add_argument('--ft', action='store_true', default=False,
                         help='finetuning on a different dataset')
     # evaluation option
-    parser.add_argument('--eval-interval', type=int, default=1,
+    parser.add_argument('--eval_interval', type=int, default=1,
                         help='evaluation interval (default: 1)')
-    parser.add_argument('--no-val', action='store_true', default=False,
+    parser.add_argument('--no_val', action='store_true', default=False,
                         help='skip validation during training')
 
     args = parser.parse_args()
