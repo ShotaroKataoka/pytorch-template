@@ -23,7 +23,7 @@ conf = Config()
 optuna.logging.disable_default_handler()
 
 class Trainer(object):
-    def __init__(self, args, trial=None):
+    def __init__(self, args, trial):
         # ------------------------- #
         # Define Hyper-Params
         """
@@ -31,7 +31,7 @@ class Trainer(object):
         If you set arg --optuna, hyper-params are optimized automatically.
         
         args: input value through command line.
-        trial: input value of Optuna.
+        trial: input value from Optuna.
         """
         ## Get params
         self.args = args
@@ -133,7 +133,7 @@ class Trainer(object):
         if args.ft:
             args.start_epoch = 0
 
-    def run(self, epoch, mode="train", optuna=False):
+    def run_epoch(self, epoch, mode="train", optuna=False):
         """
         run training or validation 1 epoch.
         You don't have to change almost of this method.
@@ -148,15 +148,17 @@ class Trainer(object):
         ## Set model mode & tqdm (progress bar; it wrap dataloader)
         assert mode=="train" or mode=="val", "argument 'mode' can be 'train' or 'val.' Not {}.".format(mode)
         if mode=="train":
-            print(pycolor.GREEN + "[Epoch: {}]".format(epoch) + pycolor.END)
-            print(pycolor.YELLOW+"Training:"+pycolor.END)
+            if not optuna:
+                print(pycolor.GREEN + "[Epoch: {}]".format(epoch) + pycolor.END)
+                print(pycolor.YELLOW+"Training:"+pycolor.END)
             self.model.train()
-            tbar = tqdm(self.train_loader)
+            tbar = tqdm(self.train_loader, leave=not optuna)
             num_dataset = len(self.train_loader)
         elif mode=="val":
-            print(pycolor.YELLOW+"Validation:"+pycolor.END)
+            if not optuna:
+                print(pycolor.YELLOW+"Validation:"+pycolor.END)
             self.model.eval()
-            tbar = tqdm(self.val_loader)
+            tbar = tqdm(self.val_loader, leave=not optuna)
             num_dataset = len(self.val_loader)
         ## Reset confusion matrix of evaluator
         self.evaluator.reset()
@@ -191,12 +193,15 @@ class Trainer(object):
         ## **********Evaluate**********
         Acc = self.evaluator.Accuracy()
         F_score_Average = self.evaluator.F_score_Average()
+        
         ## Save results
         self.writer.add_scalar('{}/loss_epoch'.format(mode), epoch_loss / num_dataset, epoch)
         self.writer.add_scalar('{}/Acc'.format(mode), Acc, epoch)
         self.writer.add_scalar('{}/F_score'.format(mode), F_score_Average, epoch)
-        print('Total {} loss: {:.3f}'.format(mode, epoch_loss / num_dataset))
-        print("Acc:{}, F_score:{}".format(Acc, F_score_Average))
+        if not optuna:
+            print('Total {} loss: {:.3f}'.format(mode, epoch_loss / num_dataset))
+            print("Acc:{}, F_score:{}".format(Acc, F_score_Average))
+        
         ## Save model
         is_save = False
         if mode=="train" and self.args.no_val:
@@ -204,11 +209,13 @@ class Trainer(object):
             is_save = True
         elif mode=="val":
             new_pred = F_score_Average
-            print("---------------------")
+            if not optuna:
+                print("---------------------")
             if new_pred > self.best_pred:
                 is_best = True
                 is_save = True
-                print("model improve best score from {:.4f} to {:.4f}.".format(self.best_pred, new_pred))
+                if not optuna:
+                    print("model improve best score from {:.4f} to {:.4f}.".format(self.best_pred, new_pred))
                 self.best_pred = new_pred
         if is_save:
             self.saver.save_checkpoint({
@@ -217,6 +224,8 @@ class Trainer(object):
                 'optimizer': self.optimizer.state_dict(),
                 'best_pred': self.best_pred,
             }, is_best)
+        
+        return F_score_Average
 
     def define_hyper_params(self, trial):
         """
@@ -250,7 +259,24 @@ class Trainer(object):
                 "optimizer_name": optimizer_name,
                 "weight_decay": weight_decay}
         
-        
+def create_objective(args, pbar):
+    args = args
+    def objective(trial):
+        trainer = Trainer(args, trial)
+        for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
+            trainer.run_epoch(epoch, mode="train", optuna=args.optuna)
+            if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
+                score = trainer.run_epoch(epoch, mode="val", optuna=args.optuna)
+                if args.optuna and args.prune:
+                    trial.report(-score, epoch)
+                    if trial.should_prune(epoch):
+                        raise optuna.structs.TrialPruned()
+        trainer.writer.close()
+        if pbar is not None:
+            pbar.update()
+        return -trainer.best_pred
+    return objective
+    
 def main():
     parser = argparse.ArgumentParser(description="PyTorch Template.")
     parser.add_argument('--model-name', type=str, default='model01',
@@ -258,6 +284,8 @@ def main():
     parser.add_argument('--optimizer_name', type=str, default='Adam',
                         help='optimizer name (default Adam)')
     parser.add_argument('--optuna', action='store_true', default=
+                        False, help='use Optuna')
+    parser.add_argument('--prune', action='store_true', default=
                         False, help='use Optuna')
     parser.add_argument('--workers', type=int, default=4,
                         metavar='N', help='dataloader threads')
@@ -319,15 +347,22 @@ def main():
         args.checkname = 'default-model'
     print(args)
     torch.manual_seed(args.seed)
-    trainer = Trainer(args)
-    print('Starting Epoch:', trainer.args.start_epoch)
-    print('Total Epoches:', trainer.args.epochs)
-    for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
-        trainer.run(epoch, mode="train")
-        if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
-            trainer.run(epoch, mode="val")
-
-    trainer.writer.close()
+    print('Starting Epoch:', args.start_epoch)
+    print('Total Epoches:', args.epochs)
+    
+    if args.optuna:
+        TRIAL_SIZE = 10
+        with tqdm(total=TRIAL_SIZE) as pbar:
+            study = optuna.create_study()
+            study.optimize(create_objective(args, pbar), n_trials=TRIAL_SIZE)
+        df = study.trials_dataframe()
+        df.to_csv("./run/df.csv")
+        
+    else:
+        train_runner = create_objective(args, None)
+        train_runner(None)
+    
+    
 
 if __name__ == "__main__":
     main()
