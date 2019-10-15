@@ -21,7 +21,7 @@ class Saver(object):
         run_id = int(self.runs[-1].split('_')[-1]) + 1 if self.runs else 0
         
         # experiment_(*+1) が無ければ作る。
-        self.experiment_dir = os.path.join(self.directory, 'experiment_{}'.format(str(run_id)))
+        self.experiment_dir = os.path.join(self.directory, 'experiment_{:0=2}'.format(run_id))
         if not os.path.exists(self.experiment_dir):
             os.makedirs(self.experiment_dir)
 
