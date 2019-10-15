@@ -1,19 +1,21 @@
-import numpy as np
+import os
+from glob import glob
+import sys
+
 import torch
 from torch.utils.data import Dataset
-from tqdm import trange
-import os
 from torchvision import transforms
-import dataloader.custom_transforms as tr
-from PIL import Image, ImageFile
-from glob import glob
-from sklearn.utils import shuffle
+import numpy as np
 import pandas as pd
+from sklearn.utils import shuffle
+from tqdm import trange
+from PIL import Image, ImageFile
 
-import sys
+import dataloader.custom_transforms as tr
 sys.path.append('..')
 from config import Config
 
+# instance of config
 conf = Config()
 
 class Dataset():

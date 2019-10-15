@@ -1,9 +1,14 @@
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from modeling.sub_module import Blocks, PoolBlock
 
+from modeling.sub_module import Blocks, PoolBlock
+sys.path.append('..')
 from config import Config
+
+# instance of config
 conf = Config()
 
 class Modeling(nn.Module):

@@ -1,17 +1,20 @@
 import os
 import shutil
-import torch
 from collections import OrderedDict
 import glob
 
+import torch
+
 class Saver(object):
 
-    def __init__(self, args):
-        self.args = args
+    def __init__(self, model_name, lr, epochs):
+        self.model_name = model_name
+        self.lr = lr
+        self.epochs = epochs
         
         """weightを保存するディレクトリを決定する。"""
         # run/model_name/experiment_* を探す。
-        self.directory = os.path.join('run', args.model_name)
+        self.directory = os.path.join('run', self.model_name)
         self.runs = sorted(glob.glob(os.path.join(self.directory, 'experiment_*')))
         
         # 実行結果をナンバリングするためにexperiment_* の数字を得る。experiment_*が無ければ 0
@@ -59,8 +62,8 @@ class Saver(object):
         logfile = os.path.join(self.experiment_dir, 'parameters.txt')
         log_file = open(logfile, 'w')
         p = OrderedDict()
-        p['lr'] = self.args.lr
-        p['epoch'] = self.args.epochs
+        p['lr'] = self.lr
+        p['epoch'] = self.epochs
         
         for key, val in p.items():
             log_file.write(key + ':' + str(val) + '\n')

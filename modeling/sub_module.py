@@ -1,8 +1,13 @@
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+sys.path.append('..')
 from config import Config
+
+# instance of config
 conf = Config()
 
 def fixed_padding(inputs, kernel_size):
