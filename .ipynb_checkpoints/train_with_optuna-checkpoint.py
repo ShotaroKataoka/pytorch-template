@@ -24,7 +24,8 @@ optuna.logging.disable_default_handler()
 
 class Trainer(object):
     def __init__(self, args, trial):
-        # Define Hyper-Params 
+        # ------------------------- #
+        # Define Hyper-Params
         """
         You can choose how to optimize hyper-params (auto or manual.)
         If you set arg --optuna, hyper-params are optimized automatically.
@@ -45,7 +46,7 @@ class Trainer(object):
         lr = hyper_params["lr"]
         weight_decay = hyper_params["weight_decay"]
         
-        
+        # ------------------------- #
         # Define Utils. (No need to Change.)
         """
         These are Project Modules.
@@ -63,7 +64,7 @@ class Trainer(object):
         self.summary = TensorboardSummary(self.saver.experiment_dir)
         self.writer = self.summary.create_summary()
         
-        
+        # ------------------------- #
         # Define Training components. (You have to Change!)
         """
         These are important setting for training.
@@ -87,17 +88,17 @@ class Trainer(object):
         ## ***Define Evaluator***
         self.evaluator = Evaluator(self.nclass)
         
-        # ***Define Optimizer***
+        ## ***Define Optimizer***
         if optimizer_name=="Adam":
-            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=args.weight_decay)
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         elif optimizer_name=="SGD":
-            optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=args.weight_decay)
+            optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
         
-        # ***Define Criterion***
+        ## ***Define Criterion***
         self.criterion = nn.CrossEntropyLoss(reduction="none")
         self.model, self.optimizer = model, optimizer
         
-        
+        # ------------------------- #
         # Some settings
         """
         You don't have to touch bellow code.
@@ -141,6 +142,7 @@ class Trainer(object):
         - Evaluation: You can change metrics of monitoring.
         - writer.add_scalar: You can change metrics to be saved tensorboard.
         """
+        # ------------------------- #
         # Initializing
         epoch_loss = 0.0
         ## Set model mode & tqdm (progress bar; it wrap dataloader)
@@ -159,6 +161,7 @@ class Trainer(object):
         ## Reset confusion matrix of evaluator
         self.evaluator.reset()
         
+        # ------------------------- #
         # Run 1 epoch
         for i, sample in enumerate(tbar):
             inputs, target = sample["image"], sample["label"]
@@ -182,6 +185,8 @@ class Trainer(object):
             target = target.cpu().numpy()
             ## Add batch into evaluator
             self.evaluator.add_batch(target, pred)
+            
+        # ------------------------- #
         # Save Log
         ## **********Evaluate**********
         Acc = self.evaluator.Accuracy()
