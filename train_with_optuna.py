@@ -23,7 +23,7 @@ conf = Config()
 optuna.logging.disable_default_handler()
 
 class Trainer(object):
-    def __init__(self, args, trial):
+    def __init__(self, args, trial=None):
         # ------------------------- #
         # Define Hyper-Params
         """
@@ -198,6 +198,7 @@ class Trainer(object):
         print('Total {} loss: {:.3f}'.format(mode, epoch_loss / num_dataset))
         print("Acc:{}, F_score:{}".format(Acc, F_score_Average))
         ## Save model
+        is_save = False
         if mode=="train" and self.args.no_val:
             is_best = False
             is_save = True
@@ -212,7 +213,7 @@ class Trainer(object):
         if is_save:
             self.saver.save_checkpoint({
                 'epoch': epoch + 1,
-                'state_dict': self.model.module.state_dict(),
+                'state_dict': self.model.state_dict(),
                 'optimizer': self.optimizer.state_dict(),
                 'best_pred': self.best_pred,
             }, is_best)
@@ -261,7 +262,7 @@ def main():
     parser.add_argument('--workers', type=int, default=4,
                         metavar='N', help='dataloader threads')
     # training hyper params
-    parser.add_argument('--epochs', type=int, default=200, metavar='N',
+    parser.add_argument('--epochs', type=int, default=30, metavar='N',
                         help='number of epochs to train (default: auto)')
     parser.add_argument('--start_epoch', type=int, default=0,
                         metavar='N', help='start epochs (default:0)')
@@ -322,9 +323,9 @@ def main():
     print('Starting Epoch:', trainer.args.start_epoch)
     print('Total Epoches:', trainer.args.epochs)
     for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
-        trainer.training(epoch)
+        trainer.run(epoch, mode="train")
         if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
-            trainer.validation(epoch)
+            trainer.run(epoch, mode="val")
 
     trainer.writer.close()
 
