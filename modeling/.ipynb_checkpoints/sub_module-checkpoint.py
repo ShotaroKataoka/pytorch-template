@@ -1,3 +1,12 @@
+
+"""
+This module is submodule of modeling.
+This is just a demonstration, so you can change or delete it.
+
+block = Blocks(args) <--  called __init__()
+y = block(x)  <-- called forward()
+"""
+
 import sys
 
 import torch
@@ -17,7 +26,7 @@ def fixed_padding(inputs, kernel_size):
     pad_end = pad_total - pad_beg
     padded_inputs = F.pad(inputs, (pad_beg, pad_end, pad_beg, pad_end))
     return padded_inputs
-
+    
 class Blocks(nn.Module):
     def __init__(self, c_hidden, kernel_size, hidden_layer):
         super(Blocks, self).__init__()
