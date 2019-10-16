@@ -10,6 +10,10 @@ from config import Config
 conf = Config()
 
 def make_data_loader(batch_size=16):
+    """
+    Prepare Dataset and apply Dataloader.
+    You don't have to change it.
+    """
     train_set = Dataset(split="train")
     val_set = Dataset(split="val")
     test_set = Dataset(split="test")
