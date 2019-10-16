@@ -167,7 +167,7 @@ class Trainer(object):
         # ------------------------- #
         # Run 1 epoch
         for i, sample in enumerate(tbar):
-            inputs, target = sample["inputs"], sample["label"]
+            inputs, target = sample["input"], sample["label"]
             if self.args.cuda:
                 inputs, target = inputs.cuda(), target.cuda()
             if mode=="train":
