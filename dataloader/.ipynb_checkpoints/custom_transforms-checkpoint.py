@@ -1,3 +1,19 @@
+"""
+This module is custom transforms of image data.
+This is called in <dataloader.dataset.Dataset> as tr.
+You can add your custom transforms in this module and call it in <dataset>.
+
+[Pre-implemented]
+Normalize:
+ToTensor:
+RandomHorizontalFlip:
+RandomRotate:
+RandomGaussianBlur:
+RandomScaleCrop:
+FixScaleCrop:
+FixedResize:
+"""
+
 import random
 
 import torch
@@ -5,7 +21,8 @@ import numpy as np
 from PIL import Image, ImageOps, ImageFilter
 
 class Normalize(object):
-    """Normalize a tensor image with mean and standard deviation.
+    """
+    Normalize a tensor image with mean and standard deviation.
     Args:
         mean (tuple): means for each channel.
         std (tuple): standard deviations for each channel.
@@ -28,8 +45,9 @@ class Normalize(object):
 
 
 class ToTensor(object):
-    """Convert ndarrays in sample to Tensors."""
-
+    """
+    Convert ndarrays in sample to Tensors.
+    """
     def __call__(self, sample):
         # swap color axis because
         # numpy image: H x W x C

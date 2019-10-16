@@ -1,15 +1,12 @@
-import os
 from glob import glob
 import sys
 
 import torch
-from torch.utils.data import Dataset
 from torchvision import transforms
 import numpy as np
 import pandas as pd
 from sklearn.utils import shuffle
-from tqdm import trange
-from PIL import Image, ImageFile
+from PIL import Image
 
 import dataloader.custom_transforms as tr
 sys.path.append('..')
@@ -20,7 +17,6 @@ conf = Config()
 
 class Dataset():
     NUM_CLASSES = conf.num_class
-    
     def __init__(self, split="train"):
         # Read label.csv
         label_path = conf.dataset_dir + "label.csv"
