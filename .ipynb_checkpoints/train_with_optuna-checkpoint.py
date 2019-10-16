@@ -260,14 +260,24 @@ class Trainer(object):
                 "optimizer_name": optimizer_name,
                 "weight_decay": weight_decay}
         
-def create_objective(args, pbar):
+def create_all_epochs_runner(args, pbar):
+    """
+    This function is used to create training runner.
+    The reason why this function is necessary is Optuna needs "objective(trial)" function.
+    
+    pbar: You can ignore this argument. It monitors progress of Optuna optimization.
+    objective(): Training runner. If you don't enable --optuna, trial argument has to be None.
+    """
     args = args
     def objective(trial):
         trainer = Trainer(args, trial)
         for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
+            ## ***Train***
             trainer.run_epoch(epoch, mode="train", optuna=args.optuna)
+            ## ***Validation***
             if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
                 score = trainer.run_epoch(epoch, mode="val", optuna=args.optuna)
+                ## ***Optuna pruning***
                 if args.optuna and args.prune:
                     trial.report(-score, epoch)
                     if trial.should_prune(epoch):
@@ -349,14 +359,14 @@ def main():
         TRIAL_SIZE = args.trial_size
         with tqdm(total=TRIAL_SIZE) as pbar:
             study = optuna.create_study()
-            study.optimize(create_objective(args, pbar), n_trials=TRIAL_SIZE)
+            study.optimize(create_all_epochs_runner(args, pbar), n_trials=TRIAL_SIZE)
         ### Save study
         df = study.trials_dataframe()
         directory = os.path.join('run', args.model_name)
         df.to_csv(os.path.join(directory, "trial.csv"))
     else:
         ## ***Not use Optuna***
-        train_runner = create_objective(args, None)
+        train_runner = create_all_epochs_runner(args, None)
         train_runner(None)
     
 if __name__ == "__main__":
