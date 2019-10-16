@@ -1,13 +1,6 @@
-import sys
-
 from torch.utils.data import DataLoader
 
 from dataloader.dataset import Dataset
-sys.path.append('..')
-from config import Config
-
-# instance of config
-conf = Config()
 
 def make_data_loader(batch_size=16):
     """

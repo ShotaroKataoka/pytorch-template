@@ -86,7 +86,7 @@ class RandomRotate(object):
         img = img.rotate(rotate_degree, Image.BILINEAR)
         mask = mask.rotate(rotate_degree, Image.NEAREST)
 
-        return {'inputs': img,
+        return {'input': img,
                 'label': mask}
 
 
@@ -98,7 +98,7 @@ class RandomGaussianBlur(object):
             img = img.filter(ImageFilter.GaussianBlur(
                 radius=random.random()))
 
-        return {'inputs': img,
+        return {'input': img,
                 'label': mask}
 
 
