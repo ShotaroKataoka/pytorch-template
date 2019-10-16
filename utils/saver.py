@@ -6,37 +6,48 @@ import glob
 import torch
 
 class Saver(object):
-
+    """
+    This module is used to save model weights and hyper-param settings.
+    
+    __init__(): set determine directory to save files.
+    save_checkpoint(): save weights of best model (every epochs.)
+    save_experiment_config(): save hyper-param settings.
+    """
     def __init__(self, model_name, lr, epochs):
         self.model_name = model_name
         self.lr = lr
         self.epochs = epochs
         
-        """weightを保存するディレクトリを決定する。"""
-        # run/model_name/experiment_* を探す。
+        # Determine directory where it save checkpoint.
+        ## look for ./run/<model_name>/experiment_<num>
         self.directory = os.path.join('run', self.model_name)
         self.runs = sorted(glob.glob(os.path.join(self.directory, 'experiment_*')))
         
-        # 実行結果をナンバリングするためにexperiment_* の数字を得る。experiment_*が無ければ 0
+        ## Get <num> to determine next experiment.
         run_id = int(self.runs[-1].split('_')[-1]) + 1 if self.runs else 0
         
-        # experiment_(*+1) が無ければ作る。
+        ## Make directory "./run/<model_name>/experiment_(<num>+1)" if it is not exist.
         self.experiment_dir = os.path.join(self.directory, 'experiment_{:0=2}'.format(run_id))
         if not os.path.exists(self.experiment_dir):
             os.makedirs(self.experiment_dir)
 
     def save_checkpoint(self, state, is_best, filename='checkpoint.pth.tar'):
-        """checkpointを保存"""
+        # Save checkpoint
+        """
+        1. Save checkpoint if it is best in this training.
+        2. Save checkpoint if it is best in whole past experiments.
+        """
+        ## 1. Save checkpoint to "./run/<model_name>/experiment_(<num>+1)/"
         filename = os.path.join(self.experiment_dir, filename)
         torch.save(state, filename)
         
-        """best modelの更新"""
+        ## ***2. Update best model***
         if is_best:
-            # pred scoreを記録
+            ## ***Check pred score***
             best_pred = state['best_pred']
             with open(os.path.join(self.experiment_dir, 'best_pred.txt'), 'w') as f:
                 f.write(str(best_pred))
-            # 過去のexperiment_*があるならそれとも比較
+            # ***Compare with past experiments***
             if self.runs:
                 previous_pred = [0.0]
                 for run in self.runs:
@@ -56,8 +67,10 @@ class Saver(object):
 
     def save_experiment_config(self):
         """
-        学習時にハイパーパラメータのログを取る。
-        ログ取りたい変数を好きに指定すること。
+        Save hyper-param setting.
+        
+        You can add "params" to save like below.
+        `p["hidden_dim"] = hidden_dim`
         """
         logfile = os.path.join(self.experiment_dir, 'parameters.txt')
         log_file = open(logfile, 'w')

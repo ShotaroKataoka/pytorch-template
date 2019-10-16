@@ -12,28 +12,36 @@ from config import Config
 conf = Config()
 
 class Modeling(nn.Module):
-    # 重みの定義などを行う。
+    """
+    This module is main definition of your model.
+    
+    __init__(): Define weights of model.
+    forward(): Compute outputs from inputs.
+    _init_weight(): Initialize weights value of model.
+    
+    Blocks, PoolBlock: Sub_module of this model.
+                       You can change these in <modeling.sub_module>.
+    """
     def __init__(self, c_in=conf.input_channel, c_out=conf.num_class, c_hidden=conf.hidden_channel, hidden_layer=conf.hidden_layer, kernel_size=3):
         super(Modeling, self).__init__()
         self.kernel_size = kernel_size
         
-        # sub_module.PoolBlock()
+        # Define sub_module.PoolBlock()
         self.conv_pool1 = PoolBlock(c_in, kernel_size, is_first=True)
         self.conv_pool2 = PoolBlock(c_hidden, kernel_size)
         
-        # sub_module.Blocks()
+        # Define sub_module.Blocks()
         self.blocks1 = Blocks(c_hidden, kernel_size, hidden_layer)
         self.blocks2 = Blocks(c_hidden*2, kernel_size, hidden_layer)
         
-        # Predict weight
+        # Define last layer.
         self.fc = nn.Linear(c_hidden*2, c_out)
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
         
-        # 重み初期化
+        # Initialize weights.
         self._init_weight()
     
-    # モデルに入力xを与えたときに自動的に呼ばれる。出力を返す。
     def forward(self, x):
         x = self.conv_pool1(x)
         x = self.blocks1(x)
@@ -47,15 +55,12 @@ class Modeling(nn.Module):
         x = self.fc(x.reshape((x.shape[0], x.shape[1])))
         return self.softmax(x)
     
-    # 重みの初期化を行う。
     def _init_weight(self):
         for m in self.modules():
-            # 全結合層なら
+            # if fully connected layer
             if isinstance(m, nn.Linear):
-                # Heの初期値で初期化
+                # initialize value (He)
                 torch.nn.init.kaiming_normal_(m.weight)
-            # 2D畳み込み層なら
             elif isinstance(m, nn.Conv2d):
-                # Heの初期値で初期化
                 torch.nn.init.kaiming_normal_(m.weight)
     

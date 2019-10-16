@@ -1,6 +1,19 @@
 import numpy as np
 
 class Evaluator(object):
+    """
+    This module is used to compute some metrics.
+    
+    add_batch(): Add batch outputs into confusion_matrix.
+    _generate_matrix(): Convert batch outputs to confusion_matrix.
+    reset(): Reset confusion_matrix.
+    
+    <Pre-implemented metrics>
+    Accuracy():
+    Recall():
+    Precision():
+    F_score():
+    """
     def __init__(self, num_class):
         self.num_class = num_class
         self.confusion_matrix = np.zeros((self.num_class,)*2)
