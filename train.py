@@ -77,9 +77,37 @@ class Trainer(object):
         Criterion: You have to define Loss function. (e.g. CrossEntropy)
         """
         ## ***Define Dataloader***
+        """
+          ■                                  
+          ■                                  
+          ■       ■■■■■■                     
+          ■       ■    ■■          ■         
+          ■       ■     ■■   ■■■  ■■■■   ■■■ 
+          ■       ■      ■  ■   ■  ■    ■   ■
+          ■       ■      ■      ■  ■        ■
+          ■       ■      ■  ■■■■■  ■    ■■■■■
+        ■ ■ ■     ■     ■■  ■   ■  ■    ■   ■
+         ■■■      ■    ■■   ■  ■■  ■■   ■  ■■
+         ■■■      ■■■■■■    ■■■■■   ■■  ■■■■■
+          ■                    
+        """
         self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(self.args.batch_size)
         
         ## ***Define Your Model***
+        """
+          ■                                           
+          ■                                ■         ■
+          ■       ■■     ■■■               ■         ■
+          ■       ■■■    ■■■               ■         ■
+          ■       ■■■    ■■■   ■■■■    ■■■■■   ■■■■  ■
+          ■       ■ ■   ■■■■  ■■  ■■  ■■  ■■  ■■  ■  ■
+          ■       ■  ■  ■ ■■  ■    ■  ■    ■  ■   ■■ ■
+          ■       ■  ■  ■ ■■  ■    ■  ■    ■  ■■■■■■ ■
+        ■ ■ ■     ■  ■■■  ■■  ■    ■  ■    ■  ■      ■
+         ■■■      ■   ■■  ■■  ■■  ■■  ■■  ■■  ■■     ■
+         ■■■      ■   ■   ■■   ■■■■    ■■■ ■   ■■■■  ■
+          ■       
+        """
         model = Modeling(c_in=conf.input_channel,
                          c_out=conf.num_class,
                          c_hidden=conf.hidden_channel,
@@ -87,15 +115,59 @@ class Trainer(object):
                          kernel_size=3)
         
         ## ***Define Evaluator***
+        """
+          ■                             
+          ■                            ■
+          ■       ■■■■■■               ■
+          ■       ■                    ■
+          ■       ■      ■■   ■  ■■■   ■
+          ■       ■       ■   ■ ■   ■  ■
+          ■       ■■■■■■  ■  ■      ■  ■
+          ■       ■       ■■ ■  ■■■■■  ■
+        ■ ■ ■     ■        ■ ■  ■   ■  ■
+         ■■■      ■        ■■   ■  ■■  ■
+         ■■■      ■■■■■■    ■   ■■■■■  ■
+          ■                        
+        """
         self.evaluator = Evaluator(self.nclass)
         
         ## ***Define Optimizer***
+        """
+          ■                                           
+          ■                                           
+          ■         ■■■■                 ■            
+          ■        ■■   ■■          ■                 
+          ■       ■■     ■  ■ ■■■  ■■■■  ■   ■■■■  ■■ 
+          ■       ■      ■■ ■■  ■■  ■    ■   ■■  ■■  ■
+          ■       ■      ■■ ■    ■  ■    ■   ■   ■   ■
+          ■       ■      ■■ ■    ■  ■    ■   ■   ■   ■
+        ■ ■ ■     ■■     ■  ■    ■  ■    ■   ■   ■   ■
+         ■■■       ■■   ■■  ■■  ■■  ■■   ■   ■   ■   ■
+         ■■■        ■■■■    ■■■■■    ■■  ■   ■   ■   ■
+          ■                 ■                         
+                            ■                         
+                            ■        
+        """
         if optimizer_name=="Adam":
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         elif optimizer_name=="SGD":
             optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
         
         ## ***Define Criterion***
+        """
+          ■                                
+          ■                                
+          ■       ■                        
+          ■       ■                        
+          ■       ■       ■■■■   ■■■■  ■■■■
+          ■       ■      ■■  ■■  ■     ■   
+          ■       ■      ■    ■  ■     ■   
+          ■       ■      ■    ■   ■■    ■■ 
+        ■ ■ ■     ■      ■    ■     ■     ■
+         ■■■      ■      ■■  ■■  ■  ■  ■  ■
+         ■■■      ■■■■■■  ■■■■   ■■■■  ■■■■
+          ■                    
+        """
         self.criterion = nn.CrossEntropyLoss(reduction="none")
         self.model, self.optimizer = model, optimizer
         
@@ -133,8 +205,23 @@ class Trainer(object):
         ## ***Clear start epoch if fine-tuning***
         if args.ft:
             args.start_epoch = 0
-
+            
     def run_epoch(self, epoch, mode="train", optuna=False):
+        """
+          ■                                                         
+          ■                                                         
+          ■      ■■■■■■■■             ■           ■                 
+          ■         ■                                               
+          ■         ■     ■ ■■  ■■■   ■   ■ ■■■   ■   ■ ■■■    ■■■■ 
+          ■         ■     ■■   ■   ■  ■   ■■  ■■  ■   ■■  ■■  ■■  ■ 
+          ■         ■     ■■       ■  ■   ■    ■  ■   ■    ■  ■   ■ 
+          ■         ■     ■    ■■■■■  ■   ■    ■  ■   ■    ■  ■■  ■ 
+        ■ ■ ■       ■     ■    ■   ■  ■   ■    ■  ■   ■    ■   ■■■  
+         ■■■        ■     ■    ■  ■■  ■   ■    ■  ■   ■    ■  ■■    
+         ■■■        ■     ■    ■■■■■  ■   ■    ■  ■   ■    ■   ■■■■ 
+          ■                                                   ■   ■■
+                                                              ■■■■■ 
+        """
         """
         run training or validation 1 epoch.
         You don't have to change almost of this method.
