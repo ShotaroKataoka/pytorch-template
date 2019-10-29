@@ -27,7 +27,7 @@ optuna.logging.disable_default_handler()
 
 class Trainer(object):
     def __init__(self, batch_size=32, epochs=200, lr=1e-3, weight_decay=1e-5,
-                 gpu_ids=None, resume=None):
+                 gpu_ids=None, resume=None, tqdm=None):
         """
         batch_size : batch_size of training and validation
         epochs : epochs of training
@@ -36,9 +36,12 @@ class Trainer(object):
         gpu_ids : List of gpu_ids. (e.g. gpu_ids = [0, 1]). Use CPU, if it is None. 
         resume : Dict of some settings. (resume = {"checkpoint_path":PATH_of_checkpoint, "fine_tuning":True or False}). 
                  Learn from scratch, if it is None.
+        tqdm : progress bar object. Set your tqdm please. 
         """
         self.use_cuda = (gpu_ids is not None) and torch.cuda.is_available
         self.batch_size = batch_size
+        self.epochs = epochs
+        self.tqdm = tqdm
         # ------------------------- #
         # Define Utils. (No need to Change.)
         """
@@ -102,7 +105,7 @@ class Trainer(object):
             if not os.path.isfile(resume["checkpoint_path"]):
                 raise RuntimeError("=> no checkpoint found at '{}'" .format(resume["checkpoint_path"]))
             checkpoint = torch.load(resume["checkpoint_path"])
-            start_epoch = checkpoint['epoch']
+            self.start_epoch = checkpoint['epoch']
             if self.use_cuda:
                 self.model.module.load_state_dict(checkpoint['state_dict'])
             else:
@@ -110,12 +113,12 @@ class Trainer(object):
             if resume["fine_tuning"]:
                 # resume params of optimizer, if run fine tuning.
                 self.optimizer.load_state_dict(checkpoint['optimizer'])
-                start_epoch = 0
+                self.start_epoch = 0
             self.best_pred = checkpoint['best_pred']
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(resume["checkpoint_path"], checkpoint['epoch']))
             
-    def run_epoch(self, epoch, mode="train", leave_progress=True):
+    def _run_epoch(self, epoch, mode="train", leave_progress=True):
         """
         run training or validation 1 epoch.
         You don't have to change almost of this method.
@@ -130,16 +133,18 @@ class Trainer(object):
         ## Set model mode & tqdm (progress bar; it wrap dataloader)
         assert (mode=="train") or (mode=="val"), "argument 'mode' can be 'train' or 'val.' Not {}.".format(mode)
         if mode=="train":
-            print(pycolor.GREEN + "[Epoch: {}]".format(epoch) + pycolor.END)
-            print(pycolor.YELLOW+"Training:"+pycolor.END)
-            tbar = tqdm(self.train_loader, leave=leave_progress)
+            if self.tqdm is not None:
+                tbar = self.tqdm(self.train_loader, leave=leave_progress)
+            else:
+                tbar = self.train_loader
             self.model.train()
-            
             num_dataset = len(self.train_loader)
         elif mode=="val":
-            print(pycolor.YELLOW+"Validation:"+pycolor.END)
+            if self.tqdm is not None:
+                tbar = self.tqdm(self.val_loader, leave=leave_progress)
+            else:
+                tbar = self.val_loader
             self.model.eval()
-            tbar = tqdm(self.val_loader, leave=leave_progress)
             num_dataset = len(self.val_loader)
         ## Reset confusion matrix of evaluator
         self.evaluator.reset()
@@ -161,10 +166,10 @@ class Trainer(object):
                 loss.backward()
                 self.optimizer.step()
             epoch_loss += loss.item()
-            tbar.set_description('{} loss: {:.3f}'.format(mode, (epoch_loss / ((i + 1)*self.batch_size))))
+            if self.tqdm is not None:
+                tbar.set_description('{} loss: {:.3f}'.format(mode, (epoch_loss / ((i + 1)*self.batch_size))))
             # Compute Metrics
             pred = output.data.cpu().numpy()
-            pred = np.argmax(pred, axis=1)
             target = target.cpu().numpy()
             ## Add batch into evaluator
             self.evaluator.add_batch(target, pred)
@@ -173,58 +178,38 @@ class Trainer(object):
         # Save Log
         ## **********Evaluate**********
         Acc = self.evaluator.Accuracy()
-        F_score_Average = self.evaluator.F_score_Average()
         
-        ## Save results
+        ## Save eval
         self.writer.add_scalar('{}/loss_epoch'.format(mode), epoch_loss / num_dataset, epoch)
         self.writer.add_scalar('{}/Acc'.format(mode), Acc, epoch)
-        self.writer.add_scalar('{}/F_score'.format(mode), F_score_Average, epoch)
-        if not optuna:
-            print('Total {} loss: {:.3f}'.format(mode, epoch_loss / num_dataset))
-            print("Acc:{}, F_score:{}".format(Acc, F_score_Average))
+        print('Total {} loss: {:.3f}'.format(mode, epoch_loss / num_dataset))
+        print("Acc:{}".format(Acc))
         
-        ## Save model
-        is_save = False
-        if mode=="train" and self.args.no_val:
-            is_best = False
-            is_save = True
-        elif mode=="val":
-            new_pred = F_score_Average
-            if not optuna:
-                print("---------------------")
-            if new_pred > self.best_pred:
-                is_best = True
-                is_save = True
-                if not optuna:
-                    print("model improve best score from {:.4f} to {:.4f}.".format(self.best_pred, new_pred))
-                self.best_pred = new_pred
-        if is_save:
-            self.saver.save_checkpoint({
-                'epoch': epoch + 1,
-                'state_dict': self.model.state_dict(),
-                'optimizer': self.optimizer.state_dict(),
-                'best_pred': self.best_pred,
-            }, is_best)
-        
-        return F_score_Average
-        
+        return Acc
+    
     def run(self):
-        trainer = Trainer(args, trial)
-        for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
+        for epoch in tqdm(range(self.start_epoch, self.epochs)):
+            print(pycolor.GREEN + "[Epoch: {}]".format(epoch) + pycolor.END)
+            
             ## ***Train***
-            trainer.run_epoch(epoch, mode="train", optuna=args.optuna)
+            print(pycolor.YELLOW+"Training:"+pycolor.END)
+            self._run_epoch(epoch, mode="train", leave_progress=True)
+            
             ## ***Validation***
-            if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
-                score = trainer.run_epoch(epoch, mode="val", optuna=args.optuna)
-                ## ***Optuna pruning***
-                if args.optuna and args.prune:
-                    trial.report(-score, epoch)
-                    if trial.should_prune(epoch):
-                        raise optuna.structs.TrialPruned()
-        trainer.writer.close()
-        if pbar is not None:
-            pbar.update()
-        return -trainer.best_pred
+            print(pycolor.YELLOW+"Validation:"+pycolor.END)
+            score = trainer._run_epoch(epoch, mode="val", leave_progress=True)
+            print("---------------------")
+            if score > self.best_pred:
+                print("model improve best score from {:.4f} to {:.4f}.".format(self.best_pred, score))
+                self.best_pred = score
+                self.saver.save_checkpoint({
+                    'epoch': epoch + 1,
+                    'state_dict': self.model.state_dict(),
+                    'optimizer': self.optimizer.state_dict(),
+                    'best_pred': self.best_pred,
+                })
+        self.writer.close()
+        return self.best_pred
     
 def main():
     # ------------------------- #
@@ -232,9 +217,9 @@ def main():
     parser = argparse.ArgumentParser(description="PyTorch Template.")
     
     ## ***Optuna option***
-    parser.add_argument('--optuna', action='store_true', default=False, help='use Optuna')
-    parser.add_argument('--prune', action='store_true', default=False, help='use Optuna Pruning')
-    parser.add_argument('--trial_size', type=int, default=100, metavar='N', help='number of trials to optimize (default: 100)')
+#     parser.add_argument('--optuna', action='store_true', default=False, help='use Optuna')
+#     parser.add_argument('--prune', action='store_true', default=False, help='use Optuna Pruning')
+#     parser.add_argument('--trial_size', type=int, default=100, metavar='N', help='number of trials to optimize (default: 100)')
     
     ## ***Training hyper params***
     parser.add_argument('--model_name', type=str, default="model01", metavar='Name', help='model name (default: model01)')
@@ -252,15 +237,9 @@ def main():
     parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
     
     ## ***checking point***
-    parser.add_argument('--resume', type=str, default=None, help='put the path to resuming file if needed')
+    parser.add_argument('--resume_path', type=str, default=None, help='put the path to resuming file if needed')
+    parser.add_argument('--fine_tuning', action='store_true', default=False, help='finetuning on a different dataset')
     
-    ## ***finetuning pre-trained models***
-    parser.add_argument('--ft', action='store_true', default=False, help='finetuning on a different dataset')
-    
-    ## ***evaluation option***
-    parser.add_argument('--eval_interval', type=int, default=1, help='evaluation interval (default: 1)')
-    parser.add_argument('--no_val', action='store_true', default=False, help='skip validation during training')
-
     args = parser.parse_args()
     
     # ------------------------- #
