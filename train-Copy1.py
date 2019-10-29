@@ -27,8 +27,17 @@ optuna.logging.disable_default_handler()
 
 class Trainer(object):
     def __init__(self, batch_size=32, epochs=200, lr=1e-3, weight_decay=1e-5,
-                 cuda=None, resume=None):
-        self.use_cuda = cuda is not None
+                 gpu_ids=None, resume=None):
+        """
+        batch_size : batch_size of training and validation
+        epochs : epochs of training
+        lr : learning rate of optimization
+        weight_decay : weight decay of optimization
+        gpu_ids : List of gpu_ids. (e.g. gpu_ids = [0, 1]). Use CPU, if it is None. 
+        resume : Dict of some settings. (resume = {"checkpoint_path":PATH_of_checkpoint, "fine_tuning":True or False}). 
+                 Learn from scratch, if it is None.
+        """
+        self.use_cuda = (gpu_ids is not None) and torch.cuda.is_available
         self.batch_size = batch_size
         # ------------------------- #
         # Define Utils. (No need to Change.)
@@ -36,9 +45,9 @@ class Trainer(object):
         These are Project Modules.
         You may not have to change these.
         
-        Saver: To save model weight.  <utils.saver.Saver()>
-        TensorboardSummary: To write tensorboard file.  <utils.summaries.TensorboardSummary()>
-        Evaluator: To calculate some metrics (e.g. Accuracy).  <utils.metrics.Evaluator()>
+        Saver: Save model weight. / <utils.saver.Saver()>
+        TensorboardSummary: Write tensorboard file. / <utils.summaries.TensorboardSummary()>
+        Evaluator: Calculate some metrics (e.g. Accuracy). / <utils.metrics.Evaluator()>
         """
         ## ***Define Saver***
         self.saver = Saver(self.args.model_name, lr, epochs)
@@ -54,10 +63,10 @@ class Trainer(object):
         These are important setting for training.
         You have to change these.
         
-        make_data_loader: This creates some <Dataloader>s.  <dataloader.__init__>
-        Modeling: You have to define your model in <modeling.modeling.Modeling()> or another file.
-        Optimizer: You have to define Optimizer.  <utils.optimizer.Optimizer()>
-        Criterion: You have to define Loss function. <utils.loss.Loss()>
+        make_data_loader: This creates some <Dataloader>s. / <dataloader.__init__>
+        Modeling: You have to define your Model. / <modeling.modeling.Modeling()>
+        Optimizer: You have to define Optimizer. / <utils.optimizer.Optimizer()>
+        Criterion: You have to define Loss function. / <utils.loss.Loss()>
         """
         ## ***Define Dataloader***
         self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(batch_size)
@@ -72,7 +81,7 @@ class Trainer(object):
         self.optimizer = Optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
         
         ## ***Define Loss***
-        self.criterion = Loss()
+        self.criterion = Loss("Adam")
         
         # ------------------------- #
         # Some settings
@@ -81,11 +90,10 @@ class Trainer(object):
         
         Using cuda: Enable to use cuda if you want.
         Resuming checkpoint: You can resume training if you want.
-        Clear start epoch if fine-tuning: fine tuning setting.
         """
         ## ***Using cuda***
         if self.use_cuda:
-            self.model = torch.nn.DataParallel(self.model, device_ids=cuda["gpu_ids"])
+            self.model = torch.nn.DataParallel(self.model, device_ids=gpu_ids)
             self.model = self.model.cuda()
 
         ## ***Resuming checkpoint***
@@ -100,38 +108,38 @@ class Trainer(object):
             else:
                 self.model.load_state_dict(checkpoint['state_dict'])
             if resume["fine_tuning"]:
+                # resume params of optimizer, if run fine tuning.
                 self.optimizer.load_state_dict(checkpoint['optimizer'])
                 start_epoch = 0
             self.best_pred = checkpoint['best_pred']
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(resume["checkpoint_path"], checkpoint['epoch']))
             
-    def run_epoch(self, epoch, mode="train", view_progress=True):
+    def run_epoch(self, epoch, mode="train", leave_progress=True):
         """
         run training or validation 1 epoch.
         You don't have to change almost of this method.
         
         Change point (if you need):
         - Evaluation: You can change metrics of monitoring.
-        - writer.add_scalar: You can change metrics to be saved tensorboard.
+        - writer.add_scalar: You can change metrics to be saved in tensorboard.
         """
         # ------------------------- #
         # Initializing
         epoch_loss = 0.0
         ## Set model mode & tqdm (progress bar; it wrap dataloader)
-        assert mode=="train" or mode=="val", "argument 'mode' can be 'train' or 'val.' Not {}.".format(mode)
+        assert (mode=="train") or (mode=="val"), "argument 'mode' can be 'train' or 'val.' Not {}.".format(mode)
         if mode=="train":
-            if view_progress:
-                print(pycolor.GREEN + "[Epoch: {}]".format(epoch) + pycolor.END)
-                print(pycolor.YELLOW+"Training:"+pycolor.END)
+            print(pycolor.GREEN + "[Epoch: {}]".format(epoch) + pycolor.END)
+            print(pycolor.YELLOW+"Training:"+pycolor.END)
+            tbar = tqdm(self.train_loader, leave=leave_progress)
             self.model.train()
-            tbar = tqdm(self.train_loader, leave=view_progress)
+            
             num_dataset = len(self.train_loader)
         elif mode=="val":
-            if view_progress:
-                print(pycolor.YELLOW+"Validation:"+pycolor.END)
+            print(pycolor.YELLOW+"Validation:"+pycolor.END)
             self.model.eval()
-            tbar = tqdm(self.val_loader, leave=view_progress)
+            tbar = tqdm(self.val_loader, leave=leave_progress)
             num_dataset = len(self.val_loader)
         ## Reset confusion matrix of evaluator
         self.evaluator.reset()
@@ -200,16 +208,7 @@ class Trainer(object):
         
         return F_score_Average
         
-def create_all_epochs_runner(args, pbar):
-    """
-    This function is used to create training runner.
-    The reason why this function is necessary is Optuna needs "objective(trial)" function.
-    
-    pbar: You can ignore this argument. It monitors progress of Optuna optimization.
-    objective(): Training runner. If you don't enable --optuna, trial argument has to be None.
-    """
-    args = args
-    def objective(trial):
+    def run(self):
         trainer = Trainer(args, trial)
         for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
             ## ***Train***
@@ -226,7 +225,6 @@ def create_all_epochs_runner(args, pbar):
         if pbar is not None:
             pbar.update()
         return -trainer.best_pred
-    return objective
     
 def main():
     # ------------------------- #
