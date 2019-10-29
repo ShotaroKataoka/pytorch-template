@@ -152,34 +152,34 @@ class Trainer(object):
         # ------------------------- #
         # Run 1 epoch
         for i, sample in enumerate(tbar):
+            ## ***Get Input data***
             inputs, target = sample["input"], sample["label"]
             if self.use_cuda:
                 inputs, target = inputs.cuda(), target.cuda()
+                
+            ## ***Calculate Loss***
             if mode=="train":
                 self.optimizer.zero_grad()
                 output = self.model(inputs)
+                loss = self.criterion(output, target)
+                loss.backward()
+                self.optimizer.step()
             elif mode=="val":
                 with torch.no_grad():
                     output = self.model(inputs)
-            loss = self.criterion(output, target)
-            if mode=="train":
-                loss.backward()
-                self.optimizer.step()
+                loss = self.criterion(output, target)
             epoch_loss += loss.item()
+            
+            ## ***Report results***
             if self.tqdm is not None:
                 tbar.set_description('{} loss: {:.3f}'.format(mode, (epoch_loss / ((i + 1)*self.batch_size))))
-            # Compute Metrics
-            pred = output.data.cpu().numpy()
-            target = target.cpu().numpy()
-            ## Add batch into evaluator
-            self.evaluator.add_batch(target, pred)
+            ## ***Add batch into evaluator***
+            self.evaluator.add_batch(target.cpu().numpy(), output.data.cpu().numpy())
             
-        # ------------------------- #
-        # Save Log
-        ## **********Evaluate**********
+        ## **********Evaluate Score**********
         Acc = self.evaluator.Accuracy()
         
-        ## Save eval
+        ## ***Save eval into Tensorboard***
         self.writer.add_scalar('{}/loss_epoch'.format(mode), epoch_loss / num_dataset, epoch)
         self.writer.add_scalar('{}/Acc'.format(mode), Acc, epoch)
         print('Total {} loss: {:.3f}'.format(mode, epoch_loss / num_dataset))
