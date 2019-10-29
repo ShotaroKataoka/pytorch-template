@@ -215,17 +215,12 @@ def main():
     # ------------------------- #
     # Set parser
     parser = argparse.ArgumentParser(description="PyTorch Template.")
-    
-    ## ***Optuna option***
-#     parser.add_argument('--optuna', action='store_true', default=False, help='use Optuna')
-#     parser.add_argument('--prune', action='store_true', default=False, help='use Optuna Pruning')
-#     parser.add_argument('--trial_size', type=int, default=100, metavar='N', help='number of trials to optimize (default: 100)')
-    
+
     ## ***Training hyper params***
     parser.add_argument('--model_name', type=str, default="model01", metavar='Name', help='model name (default: model01)')
     parser.add_argument('--epochs', type=int, default=30, metavar='N', help='number of epochs to train (default: auto)')
     parser.add_argument('--start_epoch', type=int, default=0, metavar='N', help='start epochs (default:0)')
-    parser.add_argument('--batch_size', type=int, default=None, metavar='N', help='input batch size for training (default: auto)')
+    parser.add_argument('--batch_size', type=int, default=4, metavar='N', help='input batch size for training (default: 4)')
     
     ## ***Optimizer params***
     parser.add_argument('--lr', type=float, default=1e-6, metavar='LR', help='learning rate (default: 1e-6)')
@@ -248,21 +243,15 @@ def main():
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     if args.cuda:
         try:
-            args.gpu_ids = [int(s) for s in args.gpu_ids.split(',')]
+            gpu_ids = [int(s) for s in args.gpu_ids.split(',')]
         except ValueError:
             raise ValueError('Argument --gpu_ids must be a comma-separated list of integers only')
-        
-    ## ***default batch_size setting***
-    if args.batch_size is None:
-        args.batch_size = 4 * len(args.gpu_ids)
-
-    ## ***Model name***
-    if args.optuna:
-        directory = os.path.join('run', args.model_name+"_optuna_*")
-        run = sorted(glob(directory))
-        run_id = int(run[-1].split('_')[-1]) + 1 if run else 0
-        args.model_name = args.model_name + "_optuna_{:0=2}".format(run_id)
-        
+    else:
+        gpu_ids = None
+    
+    resume = {"checkpoint_path":args.resume, "fine_tuning":args.fine_tuning}
+    
+    
     print(args)
     torch.manual_seed(args.seed)
     
@@ -271,20 +260,8 @@ def main():
     print('Starting Epoch:', args.start_epoch)
     print('Total Epoches:', args.epochs)
     
-    if args.optuna:
-        ## ***Use Optuna***
-        TRIAL_SIZE = args.trial_size
-        with tqdm(total=TRIAL_SIZE) as pbar:
-            study = optuna.create_study()
-            study.optimize(create_all_epochs_runner(args, pbar), n_trials=TRIAL_SIZE)
-        ### Save study
-        df = study.trials_dataframe()
-        directory = os.path.join('run', args.model_name)
-        df.to_csv(os.path.join(directory, "trial.csv"))
-    else:
-        ## ***Not use Optuna***
-        train_runner = create_all_epochs_runner(args, None)
-        train_runner(None)
+    trainer = Trainer(batch_size=args.batch_size, epochs=args.epochs, lr=args.epochs, weight_decay=args.weight_decay, gpu_ids=gpu_ids, resume=resume, tqdm=tqdm)
+    trainer.run()
     
 if __name__ == "__main__":
     main()
