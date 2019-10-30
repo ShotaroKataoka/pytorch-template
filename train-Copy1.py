@@ -29,19 +29,22 @@ class Trainer(object):
     def __init__(self, batch_size=32, epochs=200, lr=1e-3, weight_decay=1e-5,
                  gpu_ids=None, resume=None, tqdm=None):
         """
-        batch_size : batch_size of training and validation
-        epochs : epochs of training
-        lr : learning rate of optimization
-        weight_decay : weight decay of optimization
-        gpu_ids : List of gpu_ids. (e.g. gpu_ids = [0, 1]). Use CPU, if it is None. 
-        resume : Dict of some settings. (resume = {"checkpoint_path":PATH_of_checkpoint, "fine_tuning":True or False}). 
-                 Learn from scratch, if it is None.
-        tqdm : progress bar object. Set your tqdm please. 
+        args:
+            batch_size = (int) batch_size of training and validation
+            epochs = (int) The number of epochs of training
+            lr = (float) learning rate of optimization
+            weight_decay = (float) weight decay of optimization
+            gpu_ids = (List) List of gpu_ids. (e.g. gpu_ids = [0, 1]). Use CPU, if it is None. 
+            resume = (Dict) Dict of some settings. (resume = {"checkpoint_path":PATH_of_checkpoint, "fine_tuning":True or False}). 
+                     Learn from scratch, if it is None.
+            tqdm = (tqdm Object) progress bar object. Set your tqdm please.
+                   Don't view progress bar, if it is None.
         """
-        self.use_cuda = (gpu_ids is not None) and torch.cuda.is_available
         self.batch_size = batch_size
         self.epochs = epochs
+        self.use_cuda = (gpu_ids is not None) and torch.cuda.is_available
         self.tqdm = tqdm
+        self.use_tqdm = tqdm is not None
         # ------------------------- #
         # Define Utils. (No need to Change.)
         """
@@ -96,10 +99,10 @@ class Trainer(object):
         """
         ## ***Using cuda***
         if self.use_cuda:
-            self.model = torch.nn.DataParallel(self.model, device_ids=gpu_ids)
-            self.model = self.model.cuda()
+            self.model = torch.nn.DataParallel(self.model, device_ids=gpu_ids).cuda()
 
         ## ***Resuming checkpoint***
+        """You can ignore bellow code."""
         self.best_pred = 0.0
         if resume is not None:
             if not os.path.isfile(resume["checkpoint_path"]):
@@ -118,10 +121,16 @@ class Trainer(object):
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(resume["checkpoint_path"], checkpoint['epoch']))
             
-    def _run_epoch(self, epoch, mode="train", leave_progress=True):
+    def _run_epoch(self, epoch, mode="train", leave_progress=True, use_optuna=False):
         """
         run training or validation 1 epoch.
         You don't have to change almost of this method.
+        
+        args:
+            epoch = (int) How many epochs this time.
+            mode = {"train" or "val"}
+            leave_progress = {True or False} Can choose whether leave progress bar or not.
+            use_optuna = {True or False} Can choose whether use optuna or not.
         
         Change point (if you need):
         - Evaluation: You can change metrics of monitoring.
@@ -133,17 +142,11 @@ class Trainer(object):
         ## Set model mode & tqdm (progress bar; it wrap dataloader)
         assert (mode=="train") or (mode=="val"), "argument 'mode' can be 'train' or 'val.' Not {}.".format(mode)
         if mode=="train":
-            if self.tqdm is not None:
-                tbar = self.tqdm(self.train_loader, leave=leave_progress)
-            else:
-                tbar = self.train_loader
+            data_loader = self.tqdm(self.train_loader, leave=leave_progress) if self.use_tqdm else self.train_loader
             self.model.train()
             num_dataset = len(self.train_loader)
         elif mode=="val":
-            if self.tqdm is not None:
-                tbar = self.tqdm(self.val_loader, leave=leave_progress)
-            else:
-                tbar = self.val_loader
+            data_loader = self.tqdm(self.val_loader, leave=leave_progress) if self.use_tqdm else self.val_loader
             self.model.eval()
             num_dataset = len(self.val_loader)
         ## Reset confusion matrix of evaluator
@@ -151,19 +154,20 @@ class Trainer(object):
         
         # ------------------------- #
         # Run 1 epoch
-        for i, sample in enumerate(tbar):
+        for i, sample in enumerate(data_loader):
             ## ***Get Input data***
             inputs, target = sample["input"], sample["label"]
             if self.use_cuda:
                 inputs, target = inputs.cuda(), target.cuda()
                 
-            ## ***Calculate Loss***
+            ## ***Calculate Loss <Train>***
             if mode=="train":
                 self.optimizer.zero_grad()
                 output = self.model(inputs)
                 loss = self.criterion(output, target)
                 loss.backward()
                 self.optimizer.step()
+            ## ***Calculate Loss <Validation>***
             elif mode=="val":
                 with torch.no_grad():
                     output = self.model(inputs)
@@ -171,33 +175,36 @@ class Trainer(object):
             epoch_loss += loss.item()
             
             ## ***Report results***
-            if self.tqdm is not None:
-                tbar.set_description('{} loss: {:.3f}'.format(mode, (epoch_loss / ((i + 1)*self.batch_size))))
-            ## ***Add batch into evaluator***
+            if self.use_tqdm:
+                data_loader.set_description('{} loss: {:.3f}'.format(mode, (epoch_loss / ((i + 1)*self.batch_size))))
+            ## ***Add batch results into evaluator***
             self.evaluator.add_batch(target.cpu().numpy(), output.data.cpu().numpy())
             
         ## **********Evaluate Score**********
+        """You can add new metrics! <utils.metrics.Evaluator()>"""
         Acc = self.evaluator.Accuracy()
         
-        ## ***Save eval into Tensorboard***
-        self.writer.add_scalar('{}/loss_epoch'.format(mode), epoch_loss / num_dataset, epoch)
-        self.writer.add_scalar('{}/Acc'.format(mode), Acc, epoch)
-        print('Total {} loss: {:.3f}'.format(mode, epoch_loss / num_dataset))
-        print("Acc:{}".format(Acc))
+        if not self.use_optuna:
+            ## ***Save eval into Tensorboard***
+            self.writer.add_scalar('{}/loss_epoch'.format(mode), epoch_loss / num_dataset, epoch)
+            self.writer.add_scalar('{}/Acc'.format(mode), Acc, epoch)
+            print('Total {} loss: {:.3f}'.format(mode, epoch_loss / num_dataset))
+            print("Acc:{}".format(Acc))
         
+        # Return score to watch. (update checkpoint or optuna's objective)
         return Acc
     
-    def run(self):
+    def run(self, leave_progress=True):
         for epoch in tqdm(range(self.start_epoch, self.epochs)):
             print(pycolor.GREEN + "[Epoch: {}]".format(epoch) + pycolor.END)
             
             ## ***Train***
             print(pycolor.YELLOW+"Training:"+pycolor.END)
-            self._run_epoch(epoch, mode="train", leave_progress=True)
+            self._run_epoch(epoch, mode="train", leave_progress=leave_progress)
             
             ## ***Validation***
             print(pycolor.YELLOW+"Validation:"+pycolor.END)
-            score = trainer._run_epoch(epoch, mode="val", leave_progress=True)
+            score = trainer._run_epoch(epoch, mode="val", leave_progress=leave_progress)
             print("---------------------")
             if score > self.best_pred:
                 print("model improve best score from {:.4f} to {:.4f}.".format(self.best_pred, score))
