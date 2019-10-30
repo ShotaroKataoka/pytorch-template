@@ -26,14 +26,14 @@ conf = Config()
 optuna.logging.disable_default_handler()
 
 class Trainer(object):
-    def __init__(self, batch_size=32, epochs=200, lr=1e-3, weight_decay=1e-5,
-                 gpu_ids=None, resume=None, tqdm=None):
+    def __init__(self, batch_size=32, lr=1e-3, weight_decay=1e-5,
+                 epochs=200, gpu_ids=None, resume=None, tqdm=None):
         """
         args:
             batch_size = (int) batch_size of training and validation
-            epochs = (int) The number of epochs of training
             lr = (float) learning rate of optimization
             weight_decay = (float) weight decay of optimization
+            epochs = (int) The number of epochs of training
             gpu_ids = (List) List of gpu_ids. (e.g. gpu_ids = [0, 1]). Use CPU, if it is None. 
             resume = (Dict) Dict of some settings. (resume = {"checkpoint_path":PATH_of_checkpoint, "fine_tuning":True or False}). 
                      Learn from scratch, if it is None.
@@ -42,6 +42,7 @@ class Trainer(object):
         """
         self.batch_size = batch_size
         self.epochs = epochs
+        self.start_epoch = 0
         self.use_cuda = (gpu_ids is not None) and torch.cuda.is_available
         self.tqdm = tqdm
         self.use_tqdm = tqdm is not None
@@ -230,7 +231,6 @@ def main():
     ## ***Training hyper params***
     parser.add_argument('--model_name', type=str, default="model01", metavar='Name', help='model name (default: model01)')
     parser.add_argument('--epochs', type=int, default=30, metavar='N', help='number of epochs to train (default: auto)')
-    parser.add_argument('--start_epoch', type=int, default=0, metavar='N', help='start epochs (default:0)')
     parser.add_argument('--batch_size', type=int, default=4, metavar='N', help='input batch size for training (default: 4)')
     
     ## ***Optimizer params***
@@ -256,7 +256,7 @@ def main():
         try:
             gpu_ids = [int(s) for s in args.gpu_ids.split(',')]
         except ValueError:
-            raise ValueError('Argument --gpu_ids must be a comma-separated list of integers only')
+            raise ValueError('Argument --gpu_ids must be a comma-separated list of integers only.\ne.g.) 0,1,2')
     else:
         gpu_ids = None
     
@@ -268,10 +268,12 @@ def main():
     
     # ------------------------- #
     # Start Learning
-    print('Starting Epoch:', args.start_epoch)
-    print('Total Epoches:', args.epochs)
+    trainer = Trainer(batch_size=args.batch_size, lr=args.epochs, weight_decay=args.weight_decay, 
+                      epochs=args.epochs, gpu_ids=gpu_ids, resume=resume, tqdm=tqdm)
     
-    trainer = Trainer(batch_size=args.batch_size, epochs=args.epochs, lr=args.epochs, weight_decay=args.weight_decay, gpu_ids=gpu_ids, resume=resume, tqdm=tqdm)
+    print('Starting Epoch:', trainer.start_epoch)
+    print('Total Epoches:', trainer.epochs)
+    print(trainer.model)
     trainer.run()
     
 if __name__ == "__main__":
