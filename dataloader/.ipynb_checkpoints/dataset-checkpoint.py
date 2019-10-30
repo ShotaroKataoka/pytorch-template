@@ -36,8 +36,8 @@ class Dataset():
         
         ## ***Get Image data path. (train_x)***
         img_path = []
-        for id in ids:
-            img_path += [conf.dataset_dir+"{}.png".format(id)]
+        for i in ids:
+            img_path += [conf.dataset_dir+"{}.png".format(i)]
         img_path = np.array(img_path)
         
         # Arrange data
@@ -61,7 +61,7 @@ class Dataset():
         _img = Image.open(self.img_path[index]).convert('RGB')
         _target = self.y[index]
         sample = {'input': _img, 'label': _target}
-
+        
         # Call transform for each "train", "val" and "test".
         if self.split == "train":
             return self.transform_tr(sample)

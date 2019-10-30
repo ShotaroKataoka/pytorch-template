@@ -81,16 +81,16 @@ class Trainer(object):
         self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(batch_size)
         
         ## ***Define Your Model***
-        self.model = Modeling(c_in=conf.input_channel, c_out=conf.num_class, c_hidden=conf.hidden_channel, hidden_layer=conf.hidden_layer, kernel_size=3)
+        self.model = Modeling()
         
         ## ***Define Evaluator***
         self.evaluator = Evaluator(self.nclass)
         
         ## ***Define Optimizer***
-        self.optimizer = Optimizer(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+        self.optimizer = Optimizer(self.model.parameters(), optimizer_name="Adam", lr=lr, weight_decay=weight_decay)
         
         ## ***Define Loss***
-        self.criterion = Loss("Adam")
+        self.criterion = Loss()
         
         # ------------------------- #
         # Some settings
@@ -177,20 +177,21 @@ class Trainer(object):
                     output = self.model(inputs)
                 loss = self.criterion(output, target)
             epoch_loss += loss.item()
-            
             ## ***Report results***
             if self.use_tqdm:
-                data_loader.set_description('{} loss: {:.3f}'.format(mode, (epoch_loss / ((i + 1)*self.batch_size))))
+                data_loader.set_description('{} loss: {:.3f}'.format(mode, epoch_loss / (i + 1)))
             ## ***Add batch results into evaluator***
-            self.evaluator.add_batch(target.cpu().numpy(), output.data.cpu().numpy())
+            target = target.cpu().numpy()
+            output = torch.argmax(output, axis=1).data.cpu().numpy()
+            self.evaluator.add_batch(target, output)
             
         ## **********Evaluate Score**********
         """You can add new metrics! <utils.metrics.Evaluator()>"""
         Acc = self.evaluator.Accuracy()
         
-        if not self.use_optuna:
+        if not use_optuna:
             ## ***Save eval into Tensorboard***
-            self.writer.add_scalar('{}/loss_epoch'.format(mode), epoch_loss / num_dataset, epoch)
+            self.writer.add_scalar('{}/loss_epoch'.format(mode), epoch_loss / (i + 1), epoch)
             self.writer.add_scalar('{}/Acc'.format(mode), Acc, epoch)
             print('Total {} loss: {:.3f}'.format(mode, epoch_loss / num_dataset))
             print("Acc:{}".format(Acc))
@@ -208,10 +209,9 @@ class Trainer(object):
             ## ***Train***
             print(pycolor.YELLOW+"Training:"+pycolor.END)
             self._run_epoch(epoch, mode="train", leave_progress=leave_progress, use_optuna=use_optuna)
-            
             ## ***Validation***
             print(pycolor.YELLOW+"Validation:"+pycolor.END)
-            score = trainer._run_epoch(epoch, mode="val", leave_progress=leave_progress, use_optuna=use_optuna)
+            score = self._run_epoch(epoch, mode="val", leave_progress=leave_progress, use_optuna=use_optuna)
             print("---------------------")
             if score > self.best_pred:
                 print("model improve best score from {:.4f} to {:.4f}.".format(self.best_pred, score))
@@ -239,7 +239,7 @@ def main():
     parser.add_argument('--lr', type=float, default=1e-6, metavar='float', help='learning rate (default: 1e-6)')
     parser.add_argument('--weight_decay', type=float, default=5e-4, metavar='float', help='w-decay (default: 5e-4)')
     
-    ## ***cuda, seed and logging***
+    ## ***cuda, seed***
     parser.add_argument('--no_cuda', action='store_true', default=False, help='disables CUDA training')
     parser.add_argument('--gpu_ids', type=str, default='0', help='use which gpu to train, must be a comma-separated list of integers only (default=0)')
     parser.add_argument('--seed', type=int, default=1, metavar='int', help='random seed (default: 1)')
@@ -262,8 +262,7 @@ def main():
     else:
         gpu_ids = None
     
-    resume = {"checkpoint_path":args.resume, "fine_tuning":args.fine_tuning}
-    
+    resume = {"checkpoint_path":args.resume_path, "fine_tuning":args.fine_tuning} if args.resume_path is not None else None
     
     print(args)
     torch.manual_seed(args.seed)
