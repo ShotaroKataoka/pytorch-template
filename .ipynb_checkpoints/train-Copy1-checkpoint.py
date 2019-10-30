@@ -137,6 +137,7 @@ class Trainer(object):
         - writer.add_scalar: You can change metrics to be saved in tensorboard.
         """
         # ------------------------- #
+        leave_progress = leave_progress and not use_optuna
         # Initializing
         epoch_loss = 0.0
         ## Set model mode & tqdm (progress bar; it wrap dataloader)
@@ -194,17 +195,20 @@ class Trainer(object):
         # Return score to watch. (update checkpoint or optuna's objective)
         return Acc
     
-    def run(self, leave_progress=True):
+    def run(self, leave_progress=True, use_optuna=False):
+        """
+        Run all epochs of training and validation.
+        """
         for epoch in tqdm(range(self.start_epoch, self.epochs)):
             print(pycolor.GREEN + "[Epoch: {}]".format(epoch) + pycolor.END)
             
             ## ***Train***
             print(pycolor.YELLOW+"Training:"+pycolor.END)
-            self._run_epoch(epoch, mode="train", leave_progress=leave_progress)
+            self._run_epoch(epoch, mode="train", leave_progress=leave_progress, use_optuna=use_optuna)
             
             ## ***Validation***
             print(pycolor.YELLOW+"Validation:"+pycolor.END)
-            score = trainer._run_epoch(epoch, mode="val", leave_progress=leave_progress)
+            score = trainer._run_epoch(epoch, mode="val", leave_progress=leave_progress, use_optuna=use_optuna)
             print("---------------------")
             if score > self.best_pred:
                 print("model improve best score from {:.4f} to {:.4f}.".format(self.best_pred, score))
