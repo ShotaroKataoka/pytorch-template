@@ -27,19 +27,21 @@ optuna.logging.disable_default_handler()
 
 class Trainer(object):
     def __init__(self, batch_size=32, lr=1e-3, weight_decay=1e-5,
-                 epochs=200, gpu_ids=None, resume=None, tqdm=None):
+                 epochs=200, model_name="model01", gpu_ids=None, resume=None, tqdm=None):
         """
         args:
             batch_size = (int) batch_size of training and validation
             lr = (float) learning rate of optimization
             weight_decay = (float) weight decay of optimization
             epochs = (int) The number of epochs of training
+            model_name = (string) The name of training model. Will be folder name.
             gpu_ids = (List) List of gpu_ids. (e.g. gpu_ids = [0, 1]). Use CPU, if it is None. 
             resume = (Dict) Dict of some settings. (resume = {"checkpoint_path":PATH_of_checkpoint, "fine_tuning":True or False}). 
                      Learn from scratch, if it is None.
             tqdm = (tqdm Object) progress bar object. Set your tqdm please.
                    Don't view progress bar, if it is None.
         """
+        # Set params
         self.batch_size = batch_size
         self.epochs = epochs
         self.start_epoch = 0
@@ -57,7 +59,7 @@ class Trainer(object):
         Evaluator: Calculate some metrics (e.g. Accuracy). / <utils.metrics.Evaluator()>
         """
         ## ***Define Saver***
-        self.saver = Saver(self.args.model_name, lr, epochs)
+        self.saver = Saver(model_name, lr, epochs)
         self.saver.save_experiment_config()
         
         ## ***Define Tensorboard Summary***
@@ -269,7 +271,7 @@ def main():
     # ------------------------- #
     # Start Learning
     trainer = Trainer(batch_size=args.batch_size, lr=args.epochs, weight_decay=args.weight_decay, 
-                      epochs=args.epochs, gpu_ids=gpu_ids, resume=resume, tqdm=tqdm)
+                      epochs=args.epochs, model_name=args.model_name, gpu_ids=gpu_ids, resume=resume, tqdm=tqdm)
     
     print('Starting Epoch:', trainer.start_epoch)
     print('Total Epoches:', trainer.epochs)
