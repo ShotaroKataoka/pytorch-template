@@ -232,20 +232,20 @@ def main():
 
     ## ***Training hyper params***
     parser.add_argument('--model_name', type=str, default="model01", metavar='Name', help='model name (default: model01)')
-    parser.add_argument('--epochs', type=int, default=30, metavar='N', help='number of epochs to train (default: auto)')
-    parser.add_argument('--batch_size', type=int, default=4, metavar='N', help='input batch size for training (default: 4)')
+    parser.add_argument('--epochs', type=int, default=30, metavar='int', help='number of epochs to train (default: auto)')
+    parser.add_argument('--batch_size', type=int, default=4, metavar='int', help='input batch size for training (default: 4)')
     
     ## ***Optimizer params***
-    parser.add_argument('--lr', type=float, default=1e-6, metavar='LR', help='learning rate (default: 1e-6)')
-    parser.add_argument('--weight_decay', type=float, default=5e-4, metavar='M', help='w-decay (default: 5e-4)')
+    parser.add_argument('--lr', type=float, default=1e-6, metavar='float', help='learning rate (default: 1e-6)')
+    parser.add_argument('--weight_decay', type=float, default=5e-4, metavar='float', help='w-decay (default: 5e-4)')
     
     ## ***cuda, seed and logging***
     parser.add_argument('--no_cuda', action='store_true', default=False, help='disables CUDA training')
     parser.add_argument('--gpu_ids', type=str, default='0', help='use which gpu to train, must be a comma-separated list of integers only (default=0)')
-    parser.add_argument('--seed', type=int, default=1, metavar='S', help='random seed (default: 1)')
+    parser.add_argument('--seed', type=int, default=1, metavar='int', help='random seed (default: 1)')
     
     ## ***checking point***
-    parser.add_argument('--resume_path', type=str, default=None, help='put the path to resuming file if needed')
+    parser.add_argument('--resume_path', type=str, default=None, help='put the path to resuming file if you need')
     parser.add_argument('--fine_tuning', action='store_true', default=False, help='finetuning on a different dataset')
     
     args = parser.parse_args()
