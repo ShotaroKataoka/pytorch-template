@@ -31,39 +31,37 @@ class Saver(object):
         if not os.path.exists(self.experiment_dir):
             os.makedirs(self.experiment_dir)
 
-    def save_checkpoint(self, state, is_best, filename='checkpoint.pth.tar'):
+    def save_checkpoint(self, state, filename='checkpoint.pth.tar'):
         # Save checkpoint
         """
         1. Save checkpoint if it is best in this training.
         2. Save checkpoint if it is best in whole past experiments.
         """
-        ## 1. Save checkpoint to "./run/<model_name>/experiment_(<num>+1)/"
+        ## 1. Save checkpoint to "./run/<model_name>/experiment_(<num>+1)/checkpoint.pth.tar"
         filename = os.path.join(self.experiment_dir, filename)
         torch.save(state, filename)
         
-        ## ***2. Update best model***
-        if is_best:
-            ## ***Check pred score***
-            best_pred = state['best_pred']
-            with open(os.path.join(self.experiment_dir, 'best_pred.txt'), 'w') as f:
-                f.write(str(best_pred))
-            # ***Compare with past experiments***
-            if self.runs:
-                previous_pred = [0.0]
-                for run in self.runs:
-                    run_id = run.split('_')[-1]
-                    path = os.path.join(self.directory, 'experiment_{}'.format(str(run_id)), 'best_pred.txt')
-                    if os.path.exists(path):
-                        with open(path, 'r') as f:
-                            pred_score = float(f.readline())
-                            previous_pred.append(pred_score)
-                    else:
-                        continue
-                max_pred = max(previous_pred)
-                if best_pred > max_pred:
-                    shutil.copyfile(filename, os.path.join(self.directory, 'model_best.pth.tar'))
-            else:
+        ## 2. Update best model to "./run/<model_name>/model_best.pth.tar"
+        best_pred = state['best_pred']
+        with open(os.path.join(self.experiment_dir, 'best_pred.txt'), 'w') as f:
+            f.write(str(best_pred))
+        # ***Compare with past experiments***
+        if self.runs:
+            previous_pred = [0.0]
+            for run in self.runs:
+                run_id = run.split('_')[-1]
+                path = os.path.join(self.directory, 'experiment_{}'.format(str(run_id)), 'best_pred.txt')
+                if os.path.exists(path):
+                    with open(path, 'r') as f:
+                        pred_score = float(f.readline())
+                        previous_pred.append(pred_score)
+                else:
+                    continue
+            max_pred = max(previous_pred)
+            if best_pred > max_pred:
                 shutil.copyfile(filename, os.path.join(self.directory, 'model_best.pth.tar'))
+        else:
+            shutil.copyfile(filename, os.path.join(self.directory, 'model_best.pth.tar'))
 
     def save_experiment_config(self):
         """

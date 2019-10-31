@@ -1,17 +1,10 @@
-class Config(object):
+class MyPath(object):
     # general setting
-    dataset_dir = "./sample_data/" # dataloader.dataset.Dataset.__init__()
+    dataset_dir = "./sample_data/"
     output_dir = "./run/"
-    split_rate = 0.7 # dataloader.Dataset.__init__()
     
-    # model setting
-    optimizer_name = ["Adam", "SGD"][0]
-    input_channel = 3
     num_class = 2
-    hidden_channel = 128
-    hidden_layer = 4
-
-
+    
 class pycolor:
     RED = '\033[31m'
     GREEN = '\033[32m'

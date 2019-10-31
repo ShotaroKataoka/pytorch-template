@@ -10,10 +10,10 @@ from PIL import Image
 
 import dataloader.custom_transforms as tr
 sys.path.append('..')
-from config import Config
+from my_setting import MyPath
 
-# instance of config
-conf = Config()
+# setting of your directory path.
+mypath = MyPath()
 
 class Dataset():
     """
@@ -26,42 +26,41 @@ class Dataset():
     transform_val(): transform method for validation data.
     __len__(): This is implementation of "len(dataset)."
     """
-    NUM_CLASSES = conf.num_class
+    NUM_CLASSES = mypath.num_class
     def __init__(self, split="train"):
         # Data Getter.
         ## ***Read label.csv (train_y)***
-        label_path = conf.dataset_dir + "label.csv"
+        label_path = mypath.dataset_dir + "label.csv"
         y = pd.read_csv(label_path)["label"].values
         ids = pd.read_csv(label_path)["id"].values
         
-        ## ***Get Image data path. (train_x)***
-        img_path = []
-        for id in ids:
-            img_path += [conf.dataset_dir+"{}.png".format(id)]
-        img_path = np.array(img_path)
+        ## ***Get Image data. (train_x)***
+        img_path = ["{0}{1}.png".format(mypath.dataset_dir, i) for i in ids]
+        x = [Image.open(p).convert('RGB') for p in img_path]
         
         # Arrange data
         ## ***Shuffle data***
-        img_path, y = shuffle(img_path, y, random_state=0)
+        x, y = shuffle(x, y, random_state=0)
         
         ## ***Define split length of train and validation.***
-        train_len = int(img_path.shape[0] * conf.split_rate)
+        split_rate = 0.7
+        train_len = int(y.shape[0] * split_rate)
 
         ## ***Split data***
         if split=="train":
-            self.img_path, self.y = img_path[:train_len], y[:train_len]
+            self.x, self.y = x[:train_len], y[:train_len]
         elif split=="val":
-            self.img_path, self.y = img_path[train_len:], y[train_len:]
+            self.x, self.y = x[train_len:], y[train_len:]
         elif split=="test":
-            self.img_path, self.y = None, None
+            self.x, self.y = None, None
         self.split = split
 
     def __getitem__(self, index):
         # Define "sample" which is dictionaly of {"input": x, "label": y}
-        _img = Image.open(self.img_path[index]).convert('RGB')
+        _input = self.x[index]
         _target = self.y[index]
-        sample = {'input': _img, 'label': _target}
-
+        sample = {'input': _input, 'label': _target}
+        
         # Call transform for each "train", "val" and "test".
         if self.split == "train":
             return self.transform_tr(sample)
@@ -75,8 +74,8 @@ class Dataset():
         You can change transforms with <dataloader.custom_transforms>.
         """
         composed_transforms = transforms.Compose([
-            tr.RandomGaussianBlur(),
-            tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            tr.Resize(size=(64, 64)),
+            tr.Normalize(mean=(0.30273438, 0.30273438, 0.30273438), std=(0.44050565, 0.44050565, 0.44050565)),
             tr.ToTensor()
         ])
         return composed_transforms(sample)
@@ -86,10 +85,11 @@ class Dataset():
         You can change transforms with <dataloader.custom_transforms>.
         """
         composed_transforms = transforms.Compose([
-            tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            tr.Resize(size=(64, 64)),
+            tr.Normalize(mean=(0.30273438, 0.30273438, 0.30273438), std=(0.44050565, 0.44050565, 0.44050565)),
             tr.ToTensor()
         ])
         return composed_transforms(sample)
 
     def __len__(self):
-        return len(self.img_path)
+        return self.y.shape[0]

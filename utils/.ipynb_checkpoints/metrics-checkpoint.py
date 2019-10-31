@@ -63,6 +63,11 @@ class Evaluator(object):
         return confusion_matrix
     
     def add_batch(self, target, pred):
+        """
+        args:
+            target: right label of input. shape = (batch,)
+            pred: prediction from model. It has to be argmax() of output. shape = (batch,)
+        """
         assert target.shape == pred.shape
         self.confusion_matrix += self._generate_matrix(target, pred)
     
