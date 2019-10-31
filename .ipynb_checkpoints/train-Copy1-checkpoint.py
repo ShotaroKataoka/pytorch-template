@@ -78,16 +78,16 @@ class Trainer(object):
         Criterion: You have to define Loss function. / <utils.loss.Loss()>
         """
         ## ***Define Dataloader***
-        self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(batch_size)
+        self.train_loader, self.val_loader, self.test_loader, self.num_classes = make_data_loader(batch_size)
         
         ## ***Define Your Model***
-        self.model = Modeling()
+        self.model = Modeling(self.num_classes)
         
         ## ***Define Evaluator***
-        self.evaluator = Evaluator(self.nclass)
+        self.evaluator = Evaluator(self.num_classes)
         
         ## ***Define Optimizer***
-        self.optimizer = Optimizer(self.model.parameters(), optimizer_name="Adam", lr=lr, weight_decay=weight_decay)
+        self.optimizer = Optimizer(self.model.parameters(), optimizer_name=conf.optimizer_name, lr=lr, weight_decay=weight_decay)
         
         ## ***Define Loss***
         self.criterion = Loss()
@@ -194,7 +194,7 @@ class Trainer(object):
             self.writer.add_scalar('{}/loss_epoch'.format(mode), epoch_loss / (i + 1), epoch)
             self.writer.add_scalar('{}/Acc'.format(mode), Acc, epoch)
             print('Total {} loss: {:.3f}'.format(mode, epoch_loss / num_dataset))
-            print("Acc:{}".format(Acc))
+            print("{0} Acc:{1:.2f}".format(mode, Acc))
         
         # Return score to watch. (update checkpoint or optuna's objective)
         return Acc

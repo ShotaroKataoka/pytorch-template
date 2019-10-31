@@ -6,10 +6,7 @@ class Config(object):
     
     # model setting
     optimizer_name = ["Adam", "SGD"][0]
-    input_channel = 3
-    num_class = 2
-    hidden_channel = 128
-    hidden_layer = 4
+    num_classes = 2
 
 
 class pycolor:

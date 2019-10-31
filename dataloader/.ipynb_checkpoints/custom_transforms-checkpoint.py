@@ -3,15 +3,13 @@ This module is custom transforms of image data.
 This is called in <dataloader.dataset.Dataset> as tr.
 You can add your custom transforms in this module and call it in <dataset>.
 
+REMIND each input and output should be numpy ndarray (except ToTensor())
+to be modulalization.
+
 [Pre-implemented]
 Normalize:
 ToTensor:
-RandomHorizontalFlip:
-RandomRotate:
-RandomGaussianBlur:
-RandomScaleCrop:
-FixScaleCrop:
-FixedResize:
+Resize:
 """
 
 import random

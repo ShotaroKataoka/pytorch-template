@@ -26,7 +26,7 @@ class Dataset():
     transform_val(): transform method for validation data.
     __len__(): This is implementation of "len(dataset)."
     """
-    NUM_CLASSES = conf.num_class
+    NUM_CLASSES = conf.num_classes
     def __init__(self, split="train"):
         # Data Getter.
         ## ***Read label.csv (train_y)***
@@ -91,4 +91,4 @@ class Dataset():
         return composed_transforms(sample)
 
     def __len__(self):
-        return len(self.img_path)
+        return self.y.shape[0]
