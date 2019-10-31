@@ -74,8 +74,9 @@ class Trainer(object):
         
         make_data_loader: This creates some <Dataloader>s. / <dataloader.__init__>
         Modeling: You have to define your Model. / <modeling.modeling.Modeling()>
+        Evaluator: You have to define Evaluator. / <utils.metrics.Evaluator()>
         Optimizer: You have to define Optimizer. / <utils.optimizer.Optimizer()>
-        Criterion: You have to define Loss function. / <utils.loss.Loss()>
+        Loss: You have to define Loss function. / <utils.loss.Loss()>
         """
         ## ***Define Dataloader***
         self.train_loader, self.val_loader, self.test_loader, self.num_classes = make_data_loader(batch_size)

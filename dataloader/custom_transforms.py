@@ -45,9 +45,9 @@ class Resize(object):
     """
     Reshape a tensor image with size.
     """
-    def __init__(self, size_w, size_h):
-        self.size_w = size_w
-        self.size_h = size_h
+    def __init__(self, size):
+        self.size_w = size[0]
+        self.size_h = size[1]
     
     def __call__(self, sample):
         img = sample["input"]

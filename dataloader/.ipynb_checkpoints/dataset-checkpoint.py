@@ -73,8 +73,8 @@ class Dataset():
         You can change transforms with <dataloader.custom_transforms>.
         """
         composed_transforms = transforms.Compose([
+            tr.Resize(size=(64, 64)),
             tr.Normalize(mean=(0.30273438, 0.30273438, 0.30273438), std=(0.44050565, 0.44050565, 0.44050565)),
-            tr.Resize(size_w=32, size_h=32),
             tr.ToTensor()
         ])
         return composed_transforms(sample)
@@ -84,8 +84,8 @@ class Dataset():
         You can change transforms with <dataloader.custom_transforms>.
         """
         composed_transforms = transforms.Compose([
+            tr.Resize(size=(64, 64)),
             tr.Normalize(mean=(0.30273438, 0.30273438, 0.30273438), std=(0.44050565, 0.44050565, 0.44050565)),
-            tr.Resize(size_w=32, size_h=32),
             tr.ToTensor()
         ])
         return composed_transforms(sample)
