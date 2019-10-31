@@ -18,15 +18,13 @@ from utils.optimizer import Optimizer
 from utils.loss import Loss
 from dataloader import make_data_loader
 from modeling.modeling import Modeling
-from config import Config, pycolor
+from my_setting import pycolor
 
-# instance of config
-conf = Config()
 # set disable log of optuna
 optuna.logging.disable_default_handler()
 
 class Trainer(object):
-    def __init__(self, batch_size=32, lr=1e-3, weight_decay=1e-5,
+    def __init__(self, batch_size=32, optimizer_name="Adam", lr=1e-3, weight_decay=1e-5,
                  epochs=200, model_name="model01", gpu_ids=None, resume=None, tqdm=None):
         """
         args:
@@ -88,7 +86,7 @@ class Trainer(object):
         self.evaluator = Evaluator(self.num_classes)
         
         ## ***Define Optimizer***
-        self.optimizer = Optimizer(self.model.parameters(), optimizer_name=conf.optimizer_name, lr=lr, weight_decay=weight_decay)
+        self.optimizer = Optimizer(self.model.parameters(), optimizer_name=optimizer_name, lr=lr, weight_decay=weight_decay)
         
         ## ***Define Loss***
         self.criterion = Loss()
@@ -237,6 +235,7 @@ def main():
     parser.add_argument('--batch_size', type=int, default=4, metavar='int', help='input batch size for training (default: 4)')
     
     ## ***Optimizer params***
+    parser.add_argument('--optimizer_name', type=str, default="Adam", metavar='Name', choices=["Adam", "SGD"], help='Optimizer name (default: Adam)')
     parser.add_argument('--lr', type=float, default=1e-6, metavar='float', help='learning rate (default: 1e-6)')
     parser.add_argument('--weight_decay', type=float, default=5e-4, metavar='float', help='w-decay (default: 5e-4)')
     
@@ -270,7 +269,7 @@ def main():
     
     # ------------------------- #
     # Start Learning
-    trainer = Trainer(batch_size=args.batch_size, lr=args.epochs, weight_decay=args.weight_decay, 
+    trainer = Trainer(batch_size=args.batch_size, optimizer_name=args.optimizer_name, lr=args.epochs, weight_decay=args.weight_decay, 
                       epochs=args.epochs, model_name=args.model_name, gpu_ids=gpu_ids, resume=resume, tqdm=tqdm)
     
     print('Starting Epoch:', trainer.start_epoch)

@@ -1,4 +1,5 @@
 from glob import glob
+import sys
 
 import torch
 from torchvision import transforms
@@ -8,6 +9,11 @@ from sklearn.utils import shuffle
 from PIL import Image
 
 import dataloader.custom_transforms as tr
+sys.path.append('..')
+from my_setting import MyPath
+
+# setting of your directory path.
+mypath = MyPath()
 
 class Dataset():
     """
@@ -20,16 +26,16 @@ class Dataset():
     transform_val(): transform method for validation data.
     __len__(): This is implementation of "len(dataset)."
     """
-    NUM_CLASSES = conf.num_classes
+    NUM_CLASSES = mypath.num_class
     def __init__(self, split="train"):
         # Data Getter.
         ## ***Read label.csv (train_y)***
-        label_path = conf.dataset_dir + "label.csv"
+        label_path = mypath.dataset_dir + "label.csv"
         y = pd.read_csv(label_path)["label"].values
         ids = pd.read_csv(label_path)["id"].values
         
         ## ***Get Image data. (train_x)***
-        img_path = ["{0}{1}.png".format(conf.dataset_dir, i) for i in ids]
+        img_path = ["{0}{1}.png".format(mypath.dataset_dir, i) for i in ids]
         x = [Image.open(p).convert('RGB') for p in img_path]
         
         # Arrange data
@@ -37,7 +43,8 @@ class Dataset():
         x, y = shuffle(x, y, random_state=0)
         
         ## ***Define split length of train and validation.***
-        train_len = int(y.shape[0] * conf.split_rate)
+        split_rate = 0.7
+        train_len = int(y.shape[0] * split_rate)
 
         ## ***Split data***
         if split=="train":
