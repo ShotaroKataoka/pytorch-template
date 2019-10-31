@@ -19,8 +19,7 @@ class Modeling(nn.Module):
     forward(): Compute outputs from inputs.
     _init_weight(): Initialize weights value of model.
     
-    Blocks, PoolBlock: Sub_module of this model.
-                       You can change these in <modeling.sub_module>.
+    Xception: example of modeling program.
     """
     def __init__(self, num_classes):
         super(Modeling, self).__init__()
@@ -32,8 +31,8 @@ class Modeling(nn.Module):
     
     def forward(self, x):
         x = self.xception(x)
-        
-        return self.softmax(x)
+        x = self.softmax(x)
+        return x
     
     def _init_weight(self):
         """

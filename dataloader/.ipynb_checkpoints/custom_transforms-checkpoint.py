@@ -1,3 +1,7 @@
+import torch
+import numpy as np
+from PIL import Image
+
 """
 This module is custom transforms of image data.
 This is called in <dataloader.dataset.Dataset> as tr.
@@ -12,11 +16,25 @@ ToTensor:
 Resize:
 """
 
-import random
 
-import torch
-import numpy as np
-from PIL import Image, ImageOps, ImageFilter
+class Resize(object):
+    """
+    Reshape a tensor image with size.
+    """
+    def __init__(self, size):
+        self.size_w = size[0]
+        self.size_h = size[1]
+    
+    def __call__(self, sample):
+        img = sample["input"]
+        target = sample["label"]
+        
+        img = Image.fromarray(np.uint8(img))
+        img = np.asarray(img.resize((self.size_w, self.size_h)))
+        
+        return {"input": img,
+                "label": target}
+    
 
 class Normalize(object):
     """
@@ -41,23 +59,6 @@ class Normalize(object):
         return {"input": img,
                 "label": target}
 
-class Resize(object):
-    """
-    Reshape a tensor image with size.
-    """
-    def __init__(self, size):
-        self.size_w = size[0]
-        self.size_h = size[1]
-    
-    def __call__(self, sample):
-        img = sample["input"]
-        target = sample["label"]
-        
-        img = Image.fromarray(np.uint8(img))
-        img = np.asarray(img.resize((self.size_w, self.size_h)))
-        
-        return {"input": img,
-                "label": target}
     
 class ToTensor(object):
     """

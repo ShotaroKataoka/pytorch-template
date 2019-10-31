@@ -1,5 +1,4 @@
 from glob import glob
-import sys
 
 import torch
 from torchvision import transforms
@@ -9,11 +8,6 @@ from sklearn.utils import shuffle
 from PIL import Image
 
 import dataloader.custom_transforms as tr
-sys.path.append('..')
-from config import Config
-
-# instance of config
-conf = Config()
 
 class Dataset():
     """

@@ -1,8 +1,8 @@
 class Config(object):
     # general setting
-    dataset_dir = "./sample_data/" # dataloader.dataset.Dataset.__init__()
+    dataset_dir = "./sample_data/"
     output_dir = "./run/"
-    split_rate = 0.7 # dataloader.Dataset.__init__()
+    split_rate = 0.7
     
     # model setting
     optimizer_name = ["Adam", "SGD"][0]
