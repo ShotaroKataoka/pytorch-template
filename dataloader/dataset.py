@@ -34,33 +34,31 @@ class Dataset():
         y = pd.read_csv(label_path)["label"].values
         ids = pd.read_csv(label_path)["id"].values
         
-        ## ***Get Image data path. (train_x)***
-        img_path = []
-        for i in ids:
-            img_path += [conf.dataset_dir+"{}.png".format(i)]
-        img_path = np.array(img_path)
+        ## ***Get Image data. (train_x)***
+        img_path = ["{0}{1}.png".format(conf.dataset_dir, i) for i in ids]
+        x = [Image.open(p).convert('RGB') for p in img_path]
         
         # Arrange data
         ## ***Shuffle data***
-        img_path, y = shuffle(img_path, y, random_state=0)
+        x, y = shuffle(x, y, random_state=0)
         
         ## ***Define split length of train and validation.***
-        train_len = int(img_path.shape[0] * conf.split_rate)
+        train_len = int(y.shape[0] * conf.split_rate)
 
         ## ***Split data***
         if split=="train":
-            self.img_path, self.y = img_path[:train_len], y[:train_len]
+            self.x, self.y = x[:train_len], y[:train_len]
         elif split=="val":
-            self.img_path, self.y = img_path[train_len:], y[train_len:]
+            self.x, self.y = x[train_len:], y[train_len:]
         elif split=="test":
-            self.img_path, self.y = None, None
+            self.x, self.y = None, None
         self.split = split
 
     def __getitem__(self, index):
         # Define "sample" which is dictionaly of {"input": x, "label": y}
-        _img = Image.open(self.img_path[index]).convert('RGB')
+        _input = self.x[index]
         _target = self.y[index]
-        sample = {'input': _img, 'label': _target}
+        sample = {'input': _input, 'label': _target}
         
         # Call transform for each "train", "val" and "test".
         if self.split == "train":
@@ -75,8 +73,8 @@ class Dataset():
         You can change transforms with <dataloader.custom_transforms>.
         """
         composed_transforms = transforms.Compose([
-            tr.RandomGaussianBlur(),
-            tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            tr.Normalize(mean=(0.30273438, 0.30273438, 0.30273438), std=(0.44050565, 0.44050565, 0.44050565)),
+            tr.Resize(size_w=32, size_h=32),
             tr.ToTensor()
         ])
         return composed_transforms(sample)
@@ -86,7 +84,8 @@ class Dataset():
         You can change transforms with <dataloader.custom_transforms>.
         """
         composed_transforms = transforms.Compose([
-            tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            tr.Normalize(mean=(0.30273438, 0.30273438, 0.30273438), std=(0.44050565, 0.44050565, 0.44050565)),
+            tr.Resize(size_w=32, size_h=32),
             tr.ToTensor()
         ])
         return composed_transforms(sample)
