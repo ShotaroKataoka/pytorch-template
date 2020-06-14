@@ -269,7 +269,7 @@ def main():
     
     # ------------------------- #
     # Start Learning
-    trainer = Trainer(batch_size=args.batch_size, optimizer_name=args.optimizer_name, lr=args.epochs, weight_decay=args.weight_decay, 
+    trainer = Trainer(batch_size=args.batch_size, optimizer_name=args.optimizer_name, lr=args.lr, weight_decay=args.weight_decay, 
                       epochs=args.epochs, model_name=args.model_name, gpu_ids=gpu_ids, resume=resume, tqdm=tqdm)
     
     print('Starting Epoch:', trainer.start_epoch)
